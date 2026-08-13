@@ -1,0 +1,66 @@
+# App Store fleet manifest (hand-maintained source of truth)
+#
+# The GitHub Action (update-manifest.yml) reads this and generates apps.json,
+# served to the desktop app via jsDelivr.
+#
+# Only register apps that already publish GitHub releases AND expose the
+# preconditions the manager relies on. Preconditions:
+#   - a parseable version via `version` / `--version`
+#   - deterministic `daemon stop/start/status` subcommands (if it has a daemon)
+#
+# Asset URLs in apps.json are always the plain github.com/.../releases/download
+# URLs (never api.github.com), resolved from the GoReleaser name template:
+#   {{ProjectName}}_{{Version}}_{{Os}}_{{Arch}}  (+ .exe / .zip / .tar.gz)
+
+# Branch jsDelivr resolves for repo files (apps.json + icons).
+branch: main
+
+# This repo (owner/repo) hosts the icons; used to build jsDelivr icon URLs.
+repo: udit-001/app-store
+
+apps:
+  - id: pharos
+    repo: udit-001/pharos
+    display_name: Pharos
+    icon: assets/icons/pharos.png
+    binary: pharos
+    # project_name in the repo's .goreleaser.yaml (for asset-name resolution).
+    release_name: pharos
+    daemon:
+      stop: [pharos, daemon, stop]
+      start: [pharos, daemon, start]
+      status: [pharos, daemon, status]
+    platforms:
+      - windows/amd64
+      - linux/amd64
+      - darwin/arm64
+
+  - id: harbor
+    repo: udit-001/harbor
+    display_name: Harbor
+    icon: assets/icons/harbor.png
+    binary: harbor
+    release_name: harbor
+    daemon:
+      stop: [harbor, daemon, stop]
+      start: [harbor, daemon, start]
+      status: [harbor, daemon, status]
+    platforms:
+      - windows/amd64
+      - linux/amd64
+      - darwin/arm64
+
+  - id: waypoint
+    repo: udit-001/waypoint
+    display_name: Waypoint
+    icon: assets/icons/waypoint.png
+    binary: waypoint
+    release_name: waypoint
+    daemon:
+      stop: [waypoint, daemon, stop]
+      start: [waypoint, daemon, start]
+      status: [waypoint, daemon, status]
+    platforms:
+      - windows/amd64
+      - linux/amd64
+      - darwin/arm64
