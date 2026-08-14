@@ -275,8 +275,15 @@ func (c *Controller) showStatusLine(msg string) {
 
 func (c *Controller) render() {
 	c.listBox.Objects = nil
-	for _, r := range c.rows {
-		c.listBox.Add(c.buildCard(r))
+	if len(c.rows) == 0 {
+		c.listBox.Add(c.emptyState())
+	} else {
+		for i, r := range c.rows {
+			if i > 0 {
+				c.listBox.Add(widget.NewSeparator())
+			}
+			c.listBox.Add(c.buildRow(r))
+		}
 	}
 	c.listBox.Refresh()
 	// Update-all is only useful when something is pending (not installed or
@@ -300,59 +307,108 @@ func (c *Controller) hasPending() bool {
 	return false
 }
 
-func (c *Controller) buildCard(r *row) *widget.Card {
+func (c *Controller) buildRow(r *row) fyne.CanvasObject {
 	// Square, non-distorted icon drawn from the embedded resource: FillMode
-	// contain keeps the 512px art scaled to fit a 44px rail (a border-left widget
-	// would be given 20px×full-height, which distorts or shrinks the logo).
+	// contain keeps the 512px art scaled to fit a 40px rail.
 	var iconObj fyne.CanvasObject
 	if b, ok := appdata.Icon(r.ma.ID); ok && len(b) > 0 {
 		im := canvas.NewImageFromResource(fyne.NewStaticResource("icon_"+r.ma.ID+".png", b))
 		im.FillMode = canvas.ImageFillContain
-		im.SetMinSize(fyne.NewSize(44, 44))
+		im.SetMinSize(fyne.NewSize(40, 40))
 		iconObj = container.NewCenter(im) // vertical-center the icon in its rail
 	} else {
 		iconObj = canvas.NewImageFromImage(image.NewRGBA(image.Rect(0, 0, 1, 1)))
 	}
 
-	var actionLabel string
-	switch r.status {
-	case fleet.NotInstalled:
-		actionLabel = "Not installed · latest " + r.app.LatestVersion
-	case fleet.UpToDate:
-		actionLabel = "Up to date · v" + trimV(r.installed)
-	default:
-		actionLabel = fmt.Sprintf("New version available · %s → %s", trimV(r.installed), r.app.LatestVersion)
-	}
+	// Gear-Lever-style info column: heading name, one-line description,
+	// then a muted "version · size" subtitle.
 	title := widget.NewLabelWithStyle(r.app.DisplayName, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
 	desc := widget.NewLabel(r.app.Description)
-	desc.Wrapping = fyne.TextWrapWord
-	meta := widget.NewLabel(actionLabel)
+	desc.Wrapping = fyne.TextWrapOff
+	desc.Truncation = fyne.TextTruncateEllipsis
+	meta := widget.NewLabelWithStyle(versionLine(r), fyne.TextAlignLeading, fyne.TextStyle{})
 
+	// Install/Update is the primary (accent) action; Open is flat/secondary.
 	btn := widget.NewButton(actionButtonLabel(r.status), func() {
 		if r.status == fleet.NotInstalled || r.status == fleet.UpgradeAvailable {
 			c.goInstall(r)
 		}
 	})
+	btn.Importance = widget.HighImportance
 	if r.status == fleet.UpToDate {
 		btn.Disable()
 	}
 
-	// Row content: icon on the left, title/desc/status filling the middle.
+	// Row content: icon on the left, info filling the middle, actions on the
+	// right {"Install/Update" + "Open" when installed} — all vertically centered.
 	info := container.NewVBox(title, desc, meta)
-	// Inner border puts the icon on the left and lets the description fill the
-	// remaining width (an HBox would keep text at min-size).
 	inner := container.NewBorder(nil, nil, iconObj, nil, container.NewPadded(info))
-	// Action buttons on the RIGHT edge, vertically centered, so rows read
-	// left-to-right: icon, text, then Install/Open. Open only if installed.
 	if r.status == fleet.NotInstalled {
 		actions := container.NewCenter(container.NewVBox(btn))
 		body := container.NewBorder(nil, nil, nil, actions, inner)
-		return widget.NewCard("", "", body)
+		return container.NewPadded(body)
 	}
 	openBtn := widget.NewButton("Open", func() { openURLged(r.app.Homepage) })
+	openBtn.Importance = widget.LowImportance
 	actions := container.NewCenter(container.NewVBox(btn, openBtn))
 	body := container.NewBorder(nil, nil, nil, actions, inner)
-	return widget.NewCard("", "", body)
+	return container.NewPadded(body)
+}
+
+// versionLine renders the muted subtitle under each app, following Gear Lever's
+// "version · size" pattern.
+func versionLine(r *row) string {
+	var v string
+	switch r.status {
+	case fleet.NotInstalled:
+		v = "Not installed · latest " + r.app.LatestVersion
+	case fleet.UpToDate:
+		v = "Installed " + r.app.LatestVersion
+	default:
+		v = fmt.Sprintf("%s → %s", trimV(r.installed), r.app.LatestVersion)
+	}
+	if sz, ok := sizeFor(r.app); ok {
+		v += " · " + humanSize(sz)
+	}
+	return v
+}
+
+// sizeFor returns the download size (bytes) of the current-platform asset.
+func sizeFor(app *registry.App) (int64, bool) {
+	a, ok := app.Assets[fleet.PlatformKey()]
+	if !ok {
+		return 0, false
+	}
+	return a.Size, true
+}
+
+// humanSize formats a byte count compactly.
+func humanSize(n int64) string {
+	const kb = 1024
+	switch {
+	case n >= 1<<30:
+		return fmt.Sprintf("%.1f GB", float64(n)/(1<<30))
+	case n >= 1<<20:
+		return fmt.Sprintf("%.1f MB", float64(n)/(1<<20))
+	case n >= kb:
+		return fmt.Sprintf("%.1f KB", float64(n)/kb)
+	default:
+		return fmt.Sprintf("%d B", n)
+	}
+}
+
+// emptyState is the centered placeholder shown when the fleet is empty, mirroring
+// Gear Lever's empty-list view.
+func (c *Controller) emptyState() fyne.CanvasObject {
+	title := widget.NewLabelWithStyle("No apps yet", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	hint := widget.NewLabelWithStyle("Add an app to the fleet manifest and it will appear here.",
+		fyne.TextAlignCenter, fyne.TextStyle{})
+	hint.Wrapping = fyne.TextWrapWord
+	return container.NewCenter(container.NewVBox(
+		widget.NewIcon(theme.InfoIcon()),
+		title,
+		hint,
+	))
 }
 
 func (c *Controller) goInstall(r *row) {

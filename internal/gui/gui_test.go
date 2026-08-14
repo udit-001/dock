@@ -49,7 +49,7 @@ func markupOf(o fyne.CanvasObject) string {
 
 func TestCardNotInstalledShowsInstallNoOpen(t *testing.T) {
 	c := newTestController(t)
-	card := c.buildCard(mkApp("", "v0.9.3", "pharos"))
+	card := c.buildRow(mkApp("", "v0.9.3", "pharos"))
 	m := markupOf(card)
 	if !strings.Contains(m, "Install") {
 		t.Errorf("Not-installed card should show Install; markup:\n%s", m)
@@ -61,7 +61,7 @@ func TestCardNotInstalledShowsInstallNoOpen(t *testing.T) {
 
 func TestCardInstalledShowsOpen(t *testing.T) {
 	c := newTestController(t)
-	card := c.buildCard(mkApp("v0.9.3", "v0.9.3", "pharos"))
+	card := c.buildRow(mkApp("v0.9.3", "v0.9.3", "pharos"))
 	m := markupOf(card)
 	if !strings.Contains(m, "Open") {
 		t.Errorf("Installed (up-to-date) card should show Open; markup:\n%s", m)
@@ -95,5 +95,27 @@ func TestUpdateAllShownWhenPending(t *testing.T) {
 	c.render()
 	if c.updateBtn.Hidden {
 		t.Error("Update all should be visible when an app is pending")
+	}
+}
+
+func TestEmptyStateShownWhenNoRows(t *testing.T) {
+	c := newTestController(t)
+	c.rows = nil
+	c.render()
+	m := markupOf(c.listBox)
+	if !strings.Contains(m, "No apps yet") {
+		t.Errorf("empty-state placeholder expected; markup:\n%s", m)
+	}
+}
+
+func TestVersionLineIncludesSize(t *testing.T) {
+	app := &registry.App{
+		DisplayName: "pharos", LatestVersion: "v0.9.3",
+		Assets: map[string]registry.Asset{fleet.PlatformKey(): {Size: 15 * 1024 * 1024}},
+	}
+	r := &row{installed: "v0.9.3", status: fleet.UpToDate, app: app}
+	line := versionLine(r)
+	if !strings.Contains(line, "Installed v0.9.3") || !strings.Contains(line, "15.0 MB") {
+		t.Errorf("version+size subtitle expected, got %q", line)
 	}
 }
