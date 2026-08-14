@@ -232,8 +232,9 @@ func (c *Controller) goRefresh() {
 }
 
 // collect resolves metadata + detected versions into rows, returning the first
-// (rendering-free) error text. Widget updates happen in the caller's fyne.Do so
-// nothing is mutated from the background goroutine.
+// (rendering-free) error text. If GitHub is unreachable or rate-limited, it
+// falls back to the embedded apps.json fixture so the app always lists the
+// fleet with last-known versions rather than breaking.
 func (c *Controller) collect() ([]*row, string) {
 	var out []*row
 	var errs []string
@@ -251,10 +252,14 @@ func (c *Controller) collect() ([]*row, string) {
 			status:    fleet.Decide(installed, appMeta.LatestVersion),
 		})
 	}
-	if len(errs) > 0 {
-		return out, fmt.Sprintf("%d app(s) could not be checked: %s", len(errs), errs[0])
+	if len(errs) == 0 {
+		return out, ""
 	}
-	return out, ""
+	// GitHub unavailable (e.g. 403 rate limit): degrade to last-known data.
+	if fr, ferr := c.seedFixture(); ferr == nil {
+		return fr, "Offline — showing last known versions (GitHub unreachable)"
+	}
+	return out, fmt.Sprintf("%d app(s) could not be checked: %s", len(errs), errs[0])
 }
 
 // showStatusLine shows the one-line error/status label only when there is a
