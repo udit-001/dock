@@ -66,6 +66,10 @@ func New() (*Controller, error) {
 		Exec:  execOS{},
 		HTTP:  updater.HTTPDownloader{},
 	}
+	// Progress bar is hidden until a download is actually active (avoids a
+	// permanent "0%" in the UI).
+	progress := widget.NewProgressBar()
+	progress.Hide()
 	return &Controller{
 		man:       man,
 		st:        st,
@@ -73,7 +77,7 @@ func New() (*Controller, error) {
 		engine:    engine,
 		statusLbl: widget.NewLabelWithStyle("Ready", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		errLbl:    widget.NewLabel(""),
-		progress:  widget.NewProgressBar(),
+		progress:  progress,
 		actionLbl: widget.NewLabel(""),
 		rows:      []*row{},
 	}, nil
@@ -212,14 +216,16 @@ func (c *Controller) goInstall(r *row) {
 			if total > 0 {
 				p = float64(done) / float64(total)
 			}
-			fyne.Do(func() {
+		fyne.Do(func() {
+				c.progress.Show()
 				c.progress.SetValue(p)
 				c.actionLbl.SetText(fmt.Sprintf("Downloading %s…", r.ma.Binary))
 			})
 		}
 		err := c.engine.Install(context.Background(), r.ma, r.app, progress)
 		fyne.Do(func() {
-			c.progress.SetValue(1)
+			c.progress.Hide()
+			c.progress.SetValue(0)
 			c.actionLbl.SetText("")
 			if err != nil {
 				c.errLbl.SetText(fmt.Sprintf("%s: %v", r.app.DisplayName, err))
