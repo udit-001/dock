@@ -214,16 +214,15 @@ func (c *Controller) seedFixture() ([]*row, error) {
 	return rows, nil
 }
 
-// Run opens the main window maximized and blocks.
+// Run opens the main window and blocks.
 func (c *Controller) Run() {
 	c.a = app.New()
 	c.win = c.a.NewWindow("App Store")
 	c.win.SetContent(c.content())
 	c.win.SetPadded(true)
-	// Fyne has no Maximize(); SetFullScreen is the closest "fill the screen on
-	// launch" (hides window chrome). Resize stays as the non-fullscreen fallback.
-	c.win.SetFullScreen(true)
-	c.win.Resize(windowSize())
+	// Size to the screen resolution (not fullscreen) and center it.
+	c.win.Resize(screenSize())
+	c.win.CenterOnScreen()
 	c.goRefresh()
 	c.win.ShowAndRun()
 }
