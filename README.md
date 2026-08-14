@@ -9,13 +9,13 @@ Prebuilt binaries (no Go toolchain, no C compiler):
 Linux / macOS:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/udit-001/dock/main/scripts/install.sh | bash
+curl -fsSL https://cdn.jsdelivr.net/gh/udit-001/dock@main/scripts/install.sh | bash
 ```
 
 Windows (PowerShell):
 
 ```powershell
-powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/udit-001/dock/main/scripts/install.ps1 | iex"
+powershell -ExecutionPolicy Bypass -Command "irm https://cdn.jsdelivr.net/gh/udit-001/dock@main/scripts/install.ps1 | iex"
 ```
 
 Both installers download the latest tagged release, verify its sha256 against

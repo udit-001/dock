@@ -7,8 +7,8 @@
 # no sudo.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/udit-001/dock/main/scripts/install.sh | bash
-#   INSTALL_DIR=/opt/dock curl -fsSL https://raw.githubusercontent.com/udit-001/dock/main/scripts/install.sh | bash
+#   curl -fsSL https://cdn.jsdelivr.net/gh/udit-001/dock@main/scripts/install.sh | bash
+#   INSTALL_DIR=/opt/dock curl -fsSL https://cdn.jsdelivr.net/gh/udit-001/dock@main/scripts/install.sh | bash
 #
 # To uninstall: rm "$INSTALL_DIR/dock"
 
@@ -30,7 +30,7 @@ case "$(uname -s)" in
   Darwin) GOOS="darwin" ;;
   MINGW*|MSYS*|CYGWIN*)
     echo "error: you're on Windows - use the PowerShell installer instead:" >&2
-    echo "       powershell -ExecutionPolicy Bypass -Command \"irm https://raw.githubusercontent.com/${REPO}/main/scripts/install.ps1 | iex\"" >&2
+    echo "       powershell -ExecutionPolicy Bypass -Command \"irm https://cdn.jsdelivr.net/gh/${REPO}@main/scripts/install.ps1 | iex\"" >&2
     exit 1 ;;
   *)      echo "error: unsupported OS '$(uname -s)'" >&2; exit 1 ;;
 esac

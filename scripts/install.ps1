@@ -5,7 +5,7 @@
 # Requires Windows 10 1803+ (ships curl.exe and tar). No Go toolchain needed.
 #
 # Recommended usage (no MOTW on the script or the binary):
-#   powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/udit-001/dock/main/scripts/install.ps1 | iex"
+#   powershell -ExecutionPolicy Bypass -Command "irm https://cdn.jsdelivr.net/gh/udit-001/dock@main/scripts/install.ps1 | iex"
 #
 # Or download the script and run:
 #   Unblock-File .\install.ps1; .\install.ps1
