@@ -54,9 +54,11 @@ inspect: build
 tidy:
 	go mod tidy
 
-# Regenerate apps.json from the embedded manifest (future jsDelivr path).
+# Regenerate the embedded apps.json fixture (offline design-inspector source)
+# AND the jsDelivr apps.json at the repo root.
 gen:
-	go run ./cmd/manifest-gen -manifest internal/appdata/manifest.yaml
+	go run ./cmd/manifest-gen -manifest internal/appdata/manifest.yaml -out internal/appdata/apps.json
+	@cp internal/appdata/apps.json apps.json
 
 # Attach Windows PE resource metadata (company/version/DpiAware) via go-winres.
 winres:

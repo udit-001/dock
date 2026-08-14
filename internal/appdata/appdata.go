@@ -9,7 +9,7 @@ import (
 	"github.com/udit-001/app-store/internal/registry"
 )
 
-//go:embed manifest.yaml icons/*
+//go:embed manifest.yaml icons/* apps.json
 var FS embed.FS
 
 // LoadManifest returns the embedded fleet manifest.
@@ -19,6 +19,16 @@ func LoadManifest() (*registry.Manifest, error) {
 		return nil, err
 	}
 	return registry.ParseManifest(data)
+}
+
+// Fixture returns the embedded apps.json (generated fleet metadata) used as a
+// deterministic, offline source for the -shot/-inspect design tooling.
+func Fixture() ([]byte, error) {
+	b, err := FS.ReadFile("apps.json")
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
 }
 
 // Icon returns the embedded icon PNG bytes for an app id ("" if absent).
