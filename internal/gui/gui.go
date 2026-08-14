@@ -44,6 +44,7 @@ type Controller struct {
 	engine *updater.Engine
 
 	listBox   *fyne.Container
+	updateBtn *widget.Button
 	statusLbl *widget.Label
 	errLbl    *widget.Label
 	progress  *widget.ProgressBar
@@ -95,9 +96,11 @@ func managedRoot() string {
 // headless screenshot renderer).
 func (c *Controller) content() fyne.CanvasObject {
 	c.listBox = container.NewVBox()
+	c.updateBtn = widget.NewButton("Update all", c.goUpdateAll)
+	c.updateBtn.Hide()
 	headBtns := container.NewHBox(
 		widget.NewButton("Check for updates", c.goRefresh),
-		widget.NewButton("Update all", c.goUpdateAll),
+		c.updateBtn,
 	)
 	header := container.NewBorder(
 		container.NewBorder(nil, nil, headBtns, layout.NewSpacer(), c.statusLbl),
@@ -166,6 +169,25 @@ func (c *Controller) render() {
 		c.listBox.Add(c.buildCard(r))
 	}
 	c.listBox.Refresh()
+	// Update-all is only useful when something is pending (not installed or
+	// an upgrade is available).
+	if c.hasPending() {
+		c.updateBtn.Show()
+	} else {
+		c.updateBtn.Hide()
+	}
+	c.updateBtn.Refresh()
+}
+
+// hasPending reports whether any row has work for Update all (a fresh install
+// or an available upgrade).
+func (c *Controller) hasPending() bool {
+	for _, r := range c.rows {
+		if r.status == fleet.NotInstalled || r.status == fleet.UpgradeAvailable {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *Controller) buildCard(r *row) *widget.Card {
