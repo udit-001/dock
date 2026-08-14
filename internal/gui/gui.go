@@ -46,7 +46,6 @@ type Controller struct {
 	win    fyne.Window
 	man    *registry.Manifest
 	st     *store.Manager
-	cli    *registry.GHClient
 	engine *updater.Engine
 
 	listBox   *fyne.Container
@@ -55,6 +54,7 @@ type Controller struct {
 	checkBtn  *widget.Button
 	checking  bool
 	statusLbl *widget.Label
+	updatedLbl *widget.Label
 	errLbl    *widget.Label
 	progress  *widget.ProgressBar
 	actionLbl *widget.Label
@@ -87,7 +87,6 @@ func New() (*Controller, error) {
 	return &Controller{
 		man:       man,
 		st:        st,
-		cli:       registry.NewGHClient(man.Repo, man.Branch),
 		engine:    engine,
 		statusLbl: widget.NewLabelWithStyle("Ready", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		errLbl:    errLbl,
@@ -111,6 +110,10 @@ func (c *Controller) content() fyne.CanvasObject {
 	// right. The status label is hidden when idle; progress + action/error lines
 	// sit beneath and only appear when something happens.
 	title := widget.NewLabelWithStyle("Dock", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	// Freshness line: "Updated <time>" from apps.json.generated_at, hidden when
+	// we don't have a snapshot timestamp.
+	c.updatedLbl = widget.NewLabel("")
+	c.updatedLbl.Hide()
 	c.checkBtn = widget.NewButtonWithIcon("Check for updates", lucide("refresh-cw"), c.goRefresh)
 	// The checking state keeps the same button + refresh icon, only disabled
 	// with a "Checking…" label (no separate spinner). Reserve the widest of the
@@ -121,7 +124,7 @@ func (c *Controller) content() fyne.CanvasObject {
 	if idleW > spotW {
 		spotW = idleW
 	}
-	right := container.NewHBox(c.statusLbl, c.updateBtn,
+	right := container.NewHBox(c.updatedLbl, c.statusLbl, c.updateBtn,
 		container.New(fixedWidthLayout{Width: spotW + 2}, c.checkBtn))
 	headerRow := container.NewBorder(nil, nil, title, right, nil)
 	header := container.NewVBox(headerRow, c.progress, c.actionLbl, c.errLbl)
@@ -191,24 +194,56 @@ func (c *Controller) RenderPNG(out string) error {
 	return png.Encode(f, img)
 }
 
-// populate fills rows deterministically for the off-screen render tooling:
-// it prefers the committed apps.json (real generated data, no network), falling
-// back to the live GitHub API if the fixture is absent. The real app uses the
-// live path (goRefresh → collect).
+// populate fills rows deterministically for the off-screen render tooling from
+// the embedded apps.json (real generated data, no network).
 func (c *Controller) populate() ([]*row, string) {
-	if rows, err := c.seedFixture(); err == nil {
-		return rows, ""
+	st, err := fixtureStore()
+	if err != nil {
+		return nil, err.Error()
 	}
-	return c.collect()
+	c.setUpdated(st.GeneratedAt)
+	return c.rowsFromStore(st), ""
 }
 
-// seedFixture loads the embedded apps.json (the offline deterministic fixture)
-// and maps it to rows, combining each app's metadata with installed-version
-// detection. Falls back to a repo-root apps.json on disk if present.
-func (c *Controller) seedFixture() ([]*row, error) {
-	var data []byte
-	var err error
-	if data, err = appdata.Fixture(); err != nil {
+// loadSnapshot returns the fleet Store, preferring the fresh jsDelivr copy,
+// then the embedded fixture / on-disk apps.json. The message is non-empty when
+// we had to fall back (offline).
+func (c *Controller) loadSnapshot() (*registry.Store, string) {
+	if st, err := c.fetchSnapshot(); err == nil {
+		return st, ""
+	}
+	if st, err := fixtureStore(); err == nil {
+		return st, "Offline — showing last known versions"
+	}
+	return nil, "No fleet metadata available"
+}
+
+// fetchSnapshot downloads apps.json from jsDelivr (the repo hosting the
+// manifest). The app never calls the GitHub API — the workflow-generated
+// snapshot is the only runtime source.
+func (c *Controller) fetchSnapshot() (*registry.Store, error) {
+	url := fmt.Sprintf("https://cdn.jsdelivr.net/gh/%s@%s/apps.json", c.man.Repo, c.man.Branch)
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("jsDelivr: %s", resp.Status)
+	}
+	var st registry.Store
+	if err := json.NewDecoder(resp.Body).Decode(&st); err != nil {
+		return nil, err
+	}
+	return &st, nil
+}
+
+// fixtureStore loads the embedded apps.json (the offline deterministic
+// snapshot), falling back to a repo-root apps.json on disk.
+func fixtureStore() (*registry.Store, error) {
+	data, err := appdata.Fixture()
+	if err != nil {
 		data, err = os.ReadFile("apps.json")
 	}
 	if err != nil {
@@ -218,6 +253,12 @@ func (c *Controller) seedFixture() ([]*row, error) {
 	if err := json.Unmarshal(data, &st); err != nil {
 		return nil, err
 	}
+	return &st, nil
+}
+
+// rowsFromStore maps a snapshot's apps to rows (installed-version detection +
+// status decision).
+func (c *Controller) rowsFromStore(st *registry.Store) []*row {
 	rows := make([]*row, 0, len(st.Apps))
 	for i := range st.Apps {
 		a := &st.Apps[i]
@@ -230,7 +271,20 @@ func (c *Controller) seedFixture() ([]*row, error) {
 			status:    fleet.Decide(installed, a.LatestVersion),
 		})
 	}
-	return rows, nil
+	return rows
+}
+
+// setUpdated shows (or hides) the "Updated <time>" freshness line.
+func (c *Controller) setUpdated(t time.Time) {
+	if c.updatedLbl == nil {
+		return
+	}
+	if t.IsZero() {
+		c.updatedLbl.Hide()
+		return
+	}
+	c.updatedLbl.SetText("Updated " + t.Local().Format("Jan 2, 15:04"))
+	c.updatedLbl.Show()
 }
 
 // Run opens the main window and blocks.
@@ -288,35 +342,16 @@ func (c *Controller) setChecking(on bool) {
 	}
 }
 
-// collect resolves metadata + detected versions into rows, returning the first
-// (rendering-free) error text. If GitHub is unreachable or rate-limited, it
-// falls back to the embedded apps.json fixture so the app always lists the
-// fleet with last-known versions rather than breaking.
+// collect reads the fleet snapshot (jsDelivr, falling back to the embedded
+// fixture) and resolves installed versions into rows. It never calls the GitHub
+// API. The message is non-empty when the fresh snapshot was unreachable.
 func (c *Controller) collect() ([]*row, string) {
-	var out []*row
-	var errs []string
-	for _, ma := range c.man.Apps {
-		appMeta, err := c.cli.ResolveApp(ma)
-		if err != nil {
-			errs = append(errs, fmt.Sprintf("%s: %v", ma.DisplayName, err))
-			continue
-		}
-		installed := c.st.InstalledVersion(context.Background(), ma)
-		out = append(out, &row{
-			ma:        ma,
-			app:       appMeta,
-			installed: installed,
-			status:    fleet.Decide(installed, appMeta.LatestVersion),
-		})
+	st, msg := c.loadSnapshot()
+	if st == nil {
+		return nil, msg
 	}
-	if len(errs) == 0 {
-		return out, ""
-	}
-	// GitHub unavailable (e.g. 403 rate limit): degrade to last-known data.
-	if fr, ferr := c.seedFixture(); ferr == nil {
-		return fr, "Offline — showing last known versions (GitHub unreachable)"
-	}
-	return out, fmt.Sprintf("%d app(s) could not be checked: %s", len(errs), errs[0])
+	c.setUpdated(st.GeneratedAt)
+	return c.rowsFromStore(st), msg
 }
 
 // showStatusLine shows the one-line error/status label only when there is a
@@ -368,7 +403,7 @@ func (c *Controller) render() {
 // or an available upgrade).
 func (c *Controller) hasPending() bool {
 	for _, r := range c.rows {
-		if r.status == fleet.NotInstalled || r.status == fleet.UpgradeAvailable {
+		if r.status == fleet.NotInstalled || r.status == fleet.UpgradeAvailable || r.status == fleet.Unknown {
 			return true
 		}
 	}
@@ -393,7 +428,7 @@ func (c *Controller) buildRow(r *row) fyne.CanvasObject {
 	var col []fyne.CanvasObject
 	if r.status != fleet.UpToDate {
 		btn := widget.NewButtonWithIcon(actionButtonLabel(r.status), lucide(luPrimaryIcon(r.status)), func() {
-			if r.status == fleet.NotInstalled || r.status == fleet.UpgradeAvailable {
+			if r.status == fleet.NotInstalled || r.status == fleet.UpgradeAvailable || r.status == fleet.Unknown {
 				c.goInstall(r)
 			}
 		})
@@ -472,6 +507,9 @@ func mutedTextColor() color.Color {
 // brackets and muted: "Name (v1.2.3)". Uses the latest release version; for a
 // not-installed app we still show it (that's what "Install" would pull).
 func titleVersion(r *row) string {
+	if r.status == fleet.Unknown {
+		return "(version unknown)"
+	}
 	if r.app == nil || r.app.LatestVersion == "" {
 		return ""
 	}
@@ -579,7 +617,7 @@ func (c *Controller) goUpdateAll() {
 				continue
 			}
 			status := fleet.Decide(c.st.InstalledVersion(context.Background(), r.ma), r.app.LatestVersion)
-			if status == fleet.NotInstalled || status == fleet.UpgradeAvailable {
+			if status == fleet.NotInstalled || status == fleet.UpgradeAvailable || status == fleet.Unknown {
 				c.setStatusOnGoroutine(fmt.Sprintf("Updating %s…", r.app.DisplayName))
 				if err := c.engine.Install(context.Background(), r.ma, r.app, nil); err != nil {
 					fyne.Do(func() { c.errLbl.SetText(fmt.Sprintf("update %s: %v", r.app.DisplayName, err)) })
@@ -611,8 +649,11 @@ func (c *Controller) setStatus(s string) {
 
 // actionButtonLabel reports the text for the primary Install/Update action.
 func actionButtonLabel(s fleet.Status) string {
-	if s == fleet.NotInstalled {
+	switch s {
+	case fleet.NotInstalled:
 		return "Install"
+	case fleet.UpgradeAvailable, fleet.Unknown:
+		return "Update"
 	}
 	return "Update"
 }
