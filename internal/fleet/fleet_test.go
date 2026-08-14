@@ -4,7 +4,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/udit-001/dock/internal/registry"
+	"github.com/udit-001/dock/internal/catalog"
 )
 
 func TestDecide(t *testing.T) {
@@ -28,7 +28,7 @@ func TestDecide(t *testing.T) {
 
 func TestSelectAsset(t *testing.T) {
 	key := PlatformKey()
-	assets := map[string]registry.Asset{
+	assets := map[string]catalog.Asset{
 		key:          {URL: "correct"},
 		"other/arch": {URL: "wrong"},
 	}
@@ -39,7 +39,7 @@ func TestSelectAsset(t *testing.T) {
 }
 
 func TestSelectAssetNone(t *testing.T) {
-	if _, ok := SelectAsset(map[string]registry.Asset{}); ok {
+	if _, ok := SelectAsset(map[string]catalog.Asset{}); ok {
 		t.Fatal("expected no asset for empty map")
 	}
 	_ = runtime.GOOS // keep import

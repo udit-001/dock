@@ -12,9 +12,9 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/udit-001/dock/internal/catalog"
 	"github.com/udit-001/dock/internal/exec"
 	"github.com/udit-001/dock/internal/fleet"
-	"github.com/udit-001/dock/internal/registry"
 )
 
 // BinRoot returns the OS-standard user bin directory the manager installs
@@ -67,12 +67,12 @@ func New(root string, ex exec.Executor) (*Manager, error) {
 
 // BinaryPath returns the managed binary path for an app (flat, in the OS bin
 // root — e.g. ~/.local/bin/pharos, not a per-app subfolder).
-func (m *Manager) BinaryPath(ma registry.ManifestApp) string {
+func (m *Manager) BinaryPath(ma catalog.ManifestApp) string {
 	return filepath.Join(m.Root, binaryName(ma))
 }
 
 // binaryName returns the platform-correct executable filename for a manifest app.
-func binaryName(ma registry.ManifestApp) string {
+func binaryName(ma catalog.ManifestApp) string {
 	name := ma.Binary
 	if runtime.GOOS == "windows" && !strings.HasSuffix(strings.ToLower(name), ".exe") {
 		name += ".exe"
@@ -82,7 +82,7 @@ func binaryName(ma registry.ManifestApp) string {
 
 // Search locates an installed binary for the app, probing the managed bin root,
 // then the Go toolchain bin directories (GOBIN, GOPATH/bin), then the PATH.
-func (m *Manager) Search(ma registry.ManifestApp) (string, bool) {
+func (m *Manager) Search(ma catalog.ManifestApp) (string, bool) {
 	name := binaryName(ma)
 	dirs := []string{m.Root}
 	if m.ScanSystem {
@@ -106,7 +106,7 @@ func (m *Manager) Search(ma registry.ManifestApp) (string, bool) {
 // Destination returns where an upgraded binary should be written: the existing
 // install location if the app is already installed (deep-located or Go bin), or
 // the managed fresh-install path otherwise.
-func (m *Manager) Destination(ma registry.ManifestApp) string {
+func (m *Manager) Destination(ma catalog.ManifestApp) string {
 	if p, ok := m.Search(ma); ok {
 		return p
 	}
@@ -143,7 +143,7 @@ var versionRe = regexp.MustCompile(`v?(\d+)\.(\d+)\.(\d+)`)
 // Go toolchain bin, or PATH). Returns "" if not installed, or fleet.VersionUnknown
 // when the binary is present but its version string can't be parsed (so Decide
 // never falls back to "Not installed → Install").
-func (m *Manager) InstalledVersion(ctx context.Context, ma registry.ManifestApp) string {
+func (m *Manager) InstalledVersion(ctx context.Context, ma catalog.ManifestApp) string {
 	path, ok := m.Search(ma)
 	if !ok {
 		return ""

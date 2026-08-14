@@ -16,8 +16,8 @@ import (
 	"strings"
 
 	"github.com/udit-001/dock/internal/archive"
+	"github.com/udit-001/dock/internal/catalog"
 	"github.com/udit-001/dock/internal/exec"
-	"github.com/udit-001/dock/internal/registry"
 	"github.com/udit-001/dock/internal/store"
 )
 
@@ -137,7 +137,7 @@ func (e *Engine) stopper() exec.Stopper {
 
 // Install ensures the latest release of app is installed, stopping/restarting a
 // daemon when the app declares one. progress optionally receives staged bytes.
-func (e *Engine) Install(ctx context.Context, ma registry.ManifestApp, app *registry.App, progress Progress) error {
+func (e *Engine) Install(ctx context.Context, ma catalog.ManifestApp, app *catalog.App, progress Progress) error {
 	asset, ok := registryasset(app, ma)
 	if !ok {
 		return fmt.Errorf("no asset for this platform (%s/%s)", runtime.GOOS, runtime.GOARCH)
@@ -162,7 +162,7 @@ func (e *Engine) Install(ctx context.Context, ma registry.ManifestApp, app *regi
 // managed binary with the manifest start_args (the fleet apps self-daemonize
 // and return). Stop runs an explicit command if declared, else kills the
 // daemon by binary name.
-func (e *Engine) controlDaemon(ctx context.Context, ma registry.ManifestApp, app *registry.App, verb string) error {
+func (e *Engine) controlDaemon(ctx context.Context, ma catalog.ManifestApp, app *catalog.App, verb string) error {
 	if app.Daemon == nil || !app.Daemon.HasDaemon {
 		return nil
 	}
@@ -183,7 +183,7 @@ func (e *Engine) controlDaemon(ctx context.Context, ma registry.ManifestApp, app
 
 // downloadAndStage fetches the asset (converting archives to a single binary),
 // verifies its sha256, and returns the staged binary path + a cleanup func.
-func (e *Engine) downloadAndStage(ctx context.Context, ma registry.ManifestApp, app *registry.App, asset registry.Asset, progress Progress) (string, func(), error) {
+func (e *Engine) downloadAndStage(ctx context.Context, ma catalog.ManifestApp, app *catalog.App, asset catalog.Asset, progress Progress) (string, func(), error) {
 	dir, err := os.MkdirTemp(e.WorkDir, "appstore-*")
 	if err != nil {
 		return "", func() {}, err
@@ -217,7 +217,7 @@ func (e *Engine) downloadAndStage(ctx context.Context, ma registry.ManifestApp, 
 	return "", cleanup, fmt.Errorf("unhandled asset %q", asset.FileName)
 }
 
-func registryasset(app *registry.App, ma registry.ManifestApp) (registry.Asset, bool) {
+func registryasset(app *catalog.App, ma catalog.ManifestApp) (catalog.Asset, bool) {
 	a, ok := app.Assets[runtime.GOOS+"/"+runtime.GOARCH]
 	return a, ok
 }

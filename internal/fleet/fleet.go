@@ -6,7 +6,7 @@ package fleet
 import (
 	"runtime"
 
-	"github.com/udit-001/dock/internal/registry"
+	"github.com/udit-001/dock/internal/catalog"
 	"github.com/udit-001/dock/internal/semver"
 )
 
@@ -44,7 +44,7 @@ func PlatformKey() string {
 }
 
 // SelectAsset picks the downloadable asset for the current platform.
-func SelectAsset(assets map[string]registry.Asset) (registry.Asset, bool) {
+func SelectAsset(assets map[string]catalog.Asset) (catalog.Asset, bool) {
 	a, ok := assets[PlatformKey()]
 	return a, ok
 }

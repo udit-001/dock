@@ -26,16 +26,16 @@ import (
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/udit-001/dock/internal/appdata"
+	"github.com/udit-001/dock/internal/catalog"
 	"github.com/udit-001/dock/internal/fleet"
-	"github.com/udit-001/dock/internal/registry"
 	"github.com/udit-001/dock/internal/store"
 	"github.com/udit-001/dock/internal/updater"
 )
 
 // row is one rendered app.
 type row struct {
-	ma        registry.ManifestApp
-	app       *registry.App
+	ma        catalog.ManifestApp
+	app       *catalog.App
 	installed string
 	status    fleet.Status
 }
@@ -44,21 +44,21 @@ type row struct {
 type Controller struct {
 	a      fyne.App
 	win    fyne.Window
-	man    *registry.Manifest
+	man    *catalog.Manifest
 	st     *store.Manager
 	engine *updater.Engine
 
-	listBox   *fyne.Container
-	scroll    *container.Scroll
-	updateBtn *widget.Button
-	checkBtn  *widget.Button
-	checking  bool
-	statusLbl *widget.Label
+	listBox    *fyne.Container
+	scroll     *container.Scroll
+	updateBtn  *widget.Button
+	checkBtn   *widget.Button
+	checking   bool
+	statusLbl  *widget.Label
 	updatedLbl *widget.Label
-	errLbl    *widget.Label
-	progress  *widget.ProgressBar
-	actionLbl *widget.Label
-	rows      []*row
+	errLbl     *widget.Label
+	progress   *widget.ProgressBar
+	actionLbl  *widget.Label
+	rows       []*row
 }
 
 // New builds a controller for the default manifest and managed root.
@@ -157,7 +157,7 @@ func (c *Controller) Inspect() string {
 	rows, firstErr := c.populate()
 	c.rows = rows
 	c.showStatusLine(firstErr)
-	c.render()             // fill the list before dumping
+	c.render() // fill the list before dumping
 	win := test.NewWindow(content)
 	win.Resize(windowSize())
 	return test.RenderToMarkup(win.Canvas())
@@ -204,7 +204,7 @@ func (c *Controller) populate() ([]*row, string) {
 // loadSnapshot returns the fleet Store, preferring the fresh jsDelivr copy,
 // then the embedded fixture / on-disk apps.json. The message is non-empty when
 // we had to fall back (offline).
-func (c *Controller) loadSnapshot() (*registry.Store, string) {
+func (c *Controller) loadSnapshot() (*catalog.Store, string) {
 	if st, err := c.fetchSnapshot(); err == nil {
 		return st, ""
 	}
@@ -217,7 +217,7 @@ func (c *Controller) loadSnapshot() (*registry.Store, string) {
 // fetchSnapshot downloads apps.json from jsDelivr (the repo hosting the
 // manifest). The app never calls the GitHub API — the workflow-generated
 // snapshot is the only runtime source.
-func (c *Controller) fetchSnapshot() (*registry.Store, error) {
+func (c *Controller) fetchSnapshot() (*catalog.Store, error) {
 	url := fmt.Sprintf("https://cdn.jsdelivr.net/gh/%s@%s/apps.json", c.man.Repo, c.man.Branch)
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Get(url)
@@ -228,7 +228,7 @@ func (c *Controller) fetchSnapshot() (*registry.Store, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("jsDelivr: %s", resp.Status)
 	}
-	var st registry.Store
+	var st catalog.Store
 	if err := json.NewDecoder(resp.Body).Decode(&st); err != nil {
 		return nil, err
 	}
@@ -237,7 +237,7 @@ func (c *Controller) fetchSnapshot() (*registry.Store, error) {
 
 // fixtureStore loads the embedded apps.json (the offline deterministic
 // snapshot), falling back to a repo-root apps.json on disk.
-func fixtureStore() (*registry.Store, error) {
+func fixtureStore() (*catalog.Store, error) {
 	data, err := appdata.Fixture()
 	if err != nil {
 		data, err = os.ReadFile("apps.json")
@@ -245,7 +245,7 @@ func fixtureStore() (*registry.Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	var st registry.Store
+	var st catalog.Store
 	if err := json.Unmarshal(data, &st); err != nil {
 		return nil, err
 	}
@@ -254,11 +254,11 @@ func fixtureStore() (*registry.Store, error) {
 
 // rowsFromStore maps a snapshot's apps to rows (installed-version detection +
 // status decision).
-func (c *Controller) rowsFromStore(st *registry.Store) []*row {
+func (c *Controller) rowsFromStore(st *catalog.Store) []*row {
 	rows := make([]*row, 0, len(st.Apps))
 	for i := range st.Apps {
 		a := &st.Apps[i]
-		ma := registry.ManifestApp{ID: a.ID, Binary: a.Binary, DisplayName: a.DisplayName}
+		ma := catalog.ManifestApp{ID: a.ID, Binary: a.Binary, DisplayName: a.DisplayName}
 		installed := c.st.InstalledVersion(context.Background(), ma)
 		rows = append(rows, &row{
 			ma:        ma,
@@ -584,7 +584,7 @@ func (c *Controller) goInstall(r *row) {
 			if total > 0 {
 				p = float64(done) / float64(total)
 			}
-		fyne.Do(func() {
+			fyne.Do(func() {
 				c.progress.Show()
 				c.progress.SetValue(p)
 				c.actionLbl.SetText(fmt.Sprintf("Downloading %s…", r.ma.Binary))

@@ -6,19 +6,19 @@ package appdata
 import (
 	"embed"
 
-	"github.com/udit-001/dock/internal/registry"
+	"github.com/udit-001/dock/internal/catalog"
 )
 
 //go:embed manifest.yaml icons/* apps.json
 var FS embed.FS
 
 // LoadManifest returns the embedded fleet manifest.
-func LoadManifest() (*registry.Manifest, error) {
+func LoadManifest() (*catalog.Manifest, error) {
 	data, err := FS.ReadFile("manifest.yaml")
 	if err != nil {
 		return nil, err
 	}
-	return registry.ParseManifest(data)
+	return catalog.ParseManifest(data)
 }
 
 // Fixture returns the embedded apps.json (generated fleet metadata) used as a

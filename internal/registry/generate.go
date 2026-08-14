@@ -4,18 +4,20 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/udit-001/dock/internal/catalog"
 )
 
 // Generate resolves every app in the manifest against the GitHub API and
 // produces the apps.json Store.
-func Generate(m *Manifest, cli *GHClient) (*Store, error) {
+func Generate(m *catalog.Manifest, cli *GHClient) (*catalog.Store, error) {
 	if cli.Branch == "" {
 		cli.Branch = m.Branch
 	}
 	if cli.Branch == "" {
 		cli.Branch = "main"
 	}
-	st := &Store{GeneratedAt: time.Now().UTC()}
+	st := &catalog.Store{GeneratedAt: time.Now().UTC()}
 	for _, app := range m.Apps {
 		out, err := cli.ResolveApp(app)
 		if err != nil {
@@ -30,9 +32,9 @@ func Generate(m *Manifest, cli *GHClient) (*Store, error) {
 
 // ResolveApp fetches the latest release metadata for one manifest app directly
 // from the GitHub API and resolves its per-platform assets + checksums. This is
-// the runtime path the desktop app uses (MVP fetches straight from GitHub;
-// generated apps.json via jsDelivr is deferred).
-func (c *GHClient) ResolveApp(ma ManifestApp) (*App, error) {
+// the generator's path — the desktop app never calls the GitHub API (it reads
+// the generated apps.json via jsDelivr).
+func (c *GHClient) ResolveApp(ma catalog.ManifestApp) (*catalog.App, error) {
 	repoMeta, err := c.getRepo(ma.Repo)
 	if err != nil {
 		return nil, fmt.Errorf("repo metadata: %w", err)
@@ -43,7 +45,7 @@ func (c *GHClient) ResolveApp(ma ManifestApp) (*App, error) {
 	}
 	checksums, _ := c.checksums(ma.Repo, rel.TagName) // non-fatal if absent
 
-	app := &App{
+	app := &catalog.App{
 		ID:            ma.ID,
 		DisplayName:   ma.DisplayName,
 		Repo:          ma.Repo,
@@ -54,7 +56,7 @@ func (c *GHClient) ResolveApp(ma ManifestApp) (*App, error) {
 		LatestVersion: rel.TagName,
 		PublishedAt:   rel.PublishedAt,
 		Prerelease:    rel.Prerelease,
-		Assets:        map[string]Asset{},
+		Assets:        map[string]catalog.Asset{},
 	}
 	if ma.DisplayName == "" {
 		app.DisplayName = repoMeta.FullName
@@ -64,7 +66,7 @@ func (c *GHClient) ResolveApp(ma ManifestApp) (*App, error) {
 			c.Repo, c.Branch, strings.TrimPrefix(ma.Icon, "./"))
 	}
 	if ma.Daemon != nil {
-		app.Daemon = &DaemonOut{
+		app.Daemon = &catalog.DaemonOut{
 			HasDaemon: true,
 			StartArgs: ma.Daemon.StartArgs,
 			Stop:      ma.Daemon.Stop,
@@ -81,7 +83,7 @@ func (c *GHClient) ResolveApp(ma ManifestApp) (*App, error) {
 		if sum := checksums[asset.Name]; sum != "" {
 			asset.sha256 = sum
 		}
-		app.Assets[plat] = Asset{
+		app.Assets[plat] = catalog.Asset{
 			URL:      asset.BrowserDownloadURL,
 			SHA256:   asset.sha256,
 			Size:     asset.Size,

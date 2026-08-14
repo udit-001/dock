@@ -9,9 +9,9 @@ import (
 	"fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/widget"
 
+	"github.com/udit-001/dock/internal/catalog"
 	"github.com/udit-001/dock/internal/exec"
 	"github.com/udit-001/dock/internal/fleet"
-	"github.com/udit-001/dock/internal/registry"
 	"github.com/udit-001/dock/internal/store"
 )
 
@@ -26,7 +26,7 @@ func newTestController(t *testing.T) *Controller {
 	m.ScanSystem = false
 	c := &Controller{
 		st:        m,
-		man:       &registry.Manifest{},
+		man:       &catalog.Manifest{},
 		statusLbl: widget.NewLabel(""),
 		errLbl:    widget.NewLabel(""),
 		actionLbl: widget.NewLabel(""),
@@ -37,8 +37,8 @@ func newTestController(t *testing.T) *Controller {
 
 func mkApp(installed, latest, name string) *row {
 	return &row{
-		ma:        registry.ManifestApp{ID: name, Binary: name, DisplayName: name},
-		app:       &registry.App{DisplayName: name, Description: "A test app", Homepage: "https://github.com/x/" + name, LatestVersion: latest},
+		ma:        catalog.ManifestApp{ID: name, Binary: name, DisplayName: name},
+		app:       &catalog.App{DisplayName: name, Description: "A test app", Homepage: "https://github.com/x/" + name, LatestVersion: latest},
 		installed: installed,
 		status:    fleet.Decide(installed, latest),
 	}
@@ -110,7 +110,7 @@ func TestEmptyStateShownWhenNoRows(t *testing.T) {
 }
 
 func TestTitleShowsVersionInline(t *testing.T) {
-	app := &registry.App{DisplayName: "pharos", LatestVersion: "v0.9.3"}
+	app := &catalog.App{DisplayName: "pharos", LatestVersion: "v0.9.3"}
 	r := &row{installed: "v0.9.3", status: fleet.UpToDate, app: app}
 	if got := titleVersion(r); got != "(v0.9.3)" {
 		t.Errorf(`titleVersion should give "(v0.9.3)", got %q`, got)

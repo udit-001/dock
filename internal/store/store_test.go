@@ -7,9 +7,9 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/udit-001/dock/internal/catalog"
 	"github.com/udit-001/dock/internal/exec"
 	"github.com/udit-001/dock/internal/fleet"
-	"github.com/udit-001/dock/internal/registry"
 )
 
 func TestExtractVersion(t *testing.T) {
@@ -33,7 +33,7 @@ func TestInstalledVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 	m.ScanSystem = false
-	ma := registry.ManifestApp{ID: "waypoint", Binary: "waypoint"}
+	ma := catalog.ManifestApp{ID: "waypoint", Binary: "waypoint"}
 	// not installed yet
 	if got := m.InstalledVersion(context.Background(), ma); got != "" {
 		t.Fatalf("expected '' when not installed, got %q", got)
@@ -59,7 +59,7 @@ func TestInstalledVersionUnparseableIsInstalled(t *testing.T) {
 		t.Fatal(err)
 	}
 	m.ScanSystem = false
-	ma := registry.ManifestApp{ID: "app", Binary: "app"}
+	ma := catalog.ManifestApp{ID: "app", Binary: "app"}
 	if err := os.MkdirAll(filepath.Dir(m.BinaryPath(ma)), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +84,7 @@ func TestInstalledVersionInGoBin(t *testing.T) {
 	}
 	m.ScanSystem = false
 	m.SearchDirs = []string{alt}
-	ma := registry.ManifestApp{ID: "harbor", Binary: "harbor"}
+	ma := catalog.ManifestApp{ID: "harbor", Binary: "harbor"}
 	if err := os.WriteFile(filepath.Join(alt, "harbor"), []byte("x"), 0o755); err != nil {
 		t.Fatal(err)
 	}

@@ -10,8 +10,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/udit-001/dock/internal/catalog"
 	"github.com/udit-001/dock/internal/exec"
-	"github.com/udit-001/dock/internal/registry"
 	"github.com/udit-001/dock/internal/store"
 )
 
@@ -53,11 +53,11 @@ func hash(s string) string {
 
 func noopStop() func(string) error { return func(string) error { return nil } }
 
-func daemonApp(binary, content, wantHash string) (registry.ManifestApp, *registry.App) {
-	ma := registry.ManifestApp{ID: "pharos", Binary: binary}
-	app := &registry.App{
-		Daemon: &registry.DaemonOut{HasDaemon: true, StartArgs: []string{"start"}},
-		Assets: map[string]registry.Asset{
+func daemonApp(binary, content, wantHash string) (catalog.ManifestApp, *catalog.App) {
+	ma := catalog.ManifestApp{ID: "pharos", Binary: binary}
+	app := &catalog.App{
+		Daemon: &catalog.DaemonOut{HasDaemon: true, StartArgs: []string{"start"}},
+		Assets: map[string]catalog.Asset{
 			"linux/amd64": {URL: "http://x/download", FileName: binary, SHA256: wantHash},
 		},
 	}
@@ -125,8 +125,8 @@ func TestInstallAbortsOnChecksumMismatch(t *testing.T) {
 func TestNoDaemonAppSkipsControl(t *testing.T) {
 	re := &recExec{}
 	content := "BIN"
-	ma := registry.ManifestApp{ID: "sea", Binary: "sea"}
-	app := &registry.App{Assets: map[string]registry.Asset{
+	ma := catalog.ManifestApp{ID: "sea", Binary: "sea"}
+	app := &catalog.App{Assets: map[string]catalog.Asset{
 		"linux/amd64": {FileName: "sea", URL: "http://x", SHA256: hash(content)},
 	}}
 	eng, _ := newEngine(t, re, &fakeSrc{content: content}, noopStop())
@@ -143,10 +143,10 @@ func TestNoDaemonAppSkipsControl(t *testing.T) {
 func TestExplicitStopCommandUsed(t *testing.T) {
 	re := &recExec{}
 	content := "B"
-	ma := registry.ManifestApp{ID: "svc", Binary: "svc"}
-	app := &registry.App{
-		Daemon: &registry.DaemonOut{HasDaemon: true, Stop: []string{"svc", "stop"}, StartArgs: []string{"start"}},
-		Assets: map[string]registry.Asset{
+	ma := catalog.ManifestApp{ID: "svc", Binary: "svc"}
+	app := &catalog.App{
+		Daemon: &catalog.DaemonOut{HasDaemon: true, Stop: []string{"svc", "stop"}, StartArgs: []string{"start"}},
+		Assets: map[string]catalog.Asset{
 			"linux/amd64": {FileName: "svc", URL: "http://x", SHA256: hash(content)},
 		},
 	}
