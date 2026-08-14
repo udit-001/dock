@@ -24,7 +24,10 @@ LDFLAGS := -s -w \
 	-X github.com/udit-001/dock/internal/version.Commit=$(GIT_COMMIT) \
 	-X github.com/udit-001/dock/internal/version.Date=$(BUILD_DATE)
 
-.PHONY: all deps build run test vet tidy gen install winres version inspect screenshot clean
+.PHONY: all deps build run test vet staticcheck check tidy gen install winres version inspect screenshot clean
+
+# Pinned staticcheck (v0.7.0 / 2026.1) — go run keeps it out of go.mod.
+STATICCHECK_VERSION := v0.7.0
 
 all: build
 
@@ -51,6 +54,12 @@ test:
 
 vet:
 	go vet ./...
+
+staticcheck:
+	go run honnef.co/go/tools/cmd/staticcheck@$(STATICCHECK_VERSION) ./...
+
+# Static analysis gate: vet + staticcheck (tests are separate — see `test`).
+check: vet staticcheck
 
 # Dump the widget-tree markup (Playwright-style DOM snapshot) of the UI.
 inspect: build

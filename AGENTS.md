@@ -42,6 +42,8 @@ the CGO flags that `make` exports (`deps` creates the local Xlib symlink).
 - `make deps` — ensure `~/.local/lib/libXxf86vm.so` + fetch deps
 - `make build` → `bin/app-store` · `make run` — build & open the desktop app
 - `make test` — `go test ./...` · `make vet`
+- `make check` — static-analysis gate: `go vet` + pinned `staticcheck` (U1000
+  dead-code + deprecations; fails on unused symbols like `managedRoot`)
 - `make inspect` — dump the widget-tree markup (Fyne test driver, displayless)
 - `make gen` — regenerate `apps.json` from the manifest
 - `make winres` — regenerate Windows PE `.syso` into `cmd/app-store/`
@@ -84,8 +86,9 @@ Each core package is one **module** with a small interface:
   "not-installed shows Install but no Launch", "Update-all hides when nothing is
   pending". Inspect failures with `make inspect` (markup dump).
 
-A change is **done** when: `make test` is green, `make inspect` shows the
-expected tree, and `make build` links. Then commit.
+A change is **done** when: `make check` passes (vet + staticcheck), `make test`
+is green, `make inspect` shows the expected tree, and `make build` links. Then
+commit.
 
 ## Conventions & gotchas
 

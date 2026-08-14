@@ -96,10 +96,6 @@ func New() (*Controller, error) {
 	}, nil
 }
 
-func managedRoot() string {
-	return store.BinRoot()
-}
-
 // content builds the full window content (shared by the real app and the
 // headless screenshot renderer).
 func (c *Controller) content() fyne.CanvasObject {
@@ -421,7 +417,7 @@ func (c *Controller) buildRow(r *row) fyne.CanvasObject {
 	// Single-line description, truncated at whatever fits the row width (with an
 	// ellipsis) so rows stay uniform regardless of how long the summary is.
 	desc := widget.NewLabel(r.app.Description)
-	desc.Wrapping = fyne.TextTruncate
+	desc.Truncation = fyne.TextTruncateClip
 
 	// Action column, stacked vertically: Install/Update only when relevant, Launch
 	// only when installed. Centered so the button aligns to the row middle.
