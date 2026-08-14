@@ -20,7 +20,6 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/driver/software"
-	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
@@ -108,16 +107,14 @@ func (c *Controller) content() fyne.CanvasObject {
 	c.listBox = container.NewVBox()
 	c.updateBtn = widget.NewButtonWithIcon("Update all", lucide("download"), c.goUpdateAll)
 	c.updateBtn.Hide()
-	// One compact top row: actions on the left, status right-aligned. The
-	// progress bar + action/error labels sit beneath it but are hidden until
-	// something happens, so they don't reserve a dead band above the list.
-	top := container.NewHBox(
-		widget.NewButtonWithIcon("Check for updates", lucide("refresh-cw"), c.goRefresh),
-		c.updateBtn,
-		layout.NewSpacer(),
-		c.statusLbl,
-	)
-	header := container.NewVBox(top, c.progress, c.actionLbl, c.errLbl)
+	// Slim header bar (Gear-Lever style): title on the left, actions on the
+	// right. The status label is hidden when idle; progress + action/error lines
+	// sit beneath and only appear when something happens.
+	title := widget.NewLabelWithStyle("App Store", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	checkBtn := widget.NewButtonWithIcon("Check for updates", lucide("refresh-cw"), c.goRefresh)
+	right := container.NewHBox(c.statusLbl, c.updateBtn, checkBtn)
+	headerRow := container.NewBorder(nil, nil, title, right, nil)
+	header := container.NewVBox(headerRow, c.progress, c.actionLbl, c.errLbl)
 	// Framed list: the whole list sits on a contrasting rounded panel (like Gear
 	// Lever's LibAdwaita ListBox) that stands out from the window background.
 	// The panel is a fixed surface; the rows scroll over it.
@@ -127,7 +124,7 @@ func (c *Controller) content() fyne.CanvasObject {
 	panel := container.NewStack(surface, container.NewPadded(scroll))
 	// Breathing room: pad the header so there's a gap above it and between it
 	// and the list, while the Border keeps the list filling the remaining space.
-	headOuter := container.NewPadded(header)
+	headOuter := padTop(container.NewPadded(header), 16)
 	body := container.NewBorder(headOuter, nil, nil, nil, panel)
 	// Cap the column width and center it (Bootstrap-container feel) so the list
 	// doesn't sprawl across very wide windows.
@@ -245,7 +242,7 @@ func (c *Controller) goRefresh() {
 		fyne.Do(func() {
 			c.rows = rows
 			c.render()
-			c.setStatus("Ready")
+			c.setStatus("")
 			c.showStatusLine(firstErr)
 		})
 	}()
@@ -494,7 +491,7 @@ func (c *Controller) goInstall(r *row) {
 			if err != nil {
 				c.errLbl.SetText(fmt.Sprintf("%s: %v", r.app.DisplayName, err))
 			}
-			c.setStatus("Ready")
+			c.setStatus("")
 			c.goRefresh()
 		})
 	}()
@@ -516,15 +513,24 @@ func (c *Controller) goUpdateAll() {
 				}
 			}
 		}
-		fyne.Do(func() { c.actionLbl.SetText(""); c.setStatus("Ready"); c.goRefresh() })
+		fyne.Do(func() { c.actionLbl.SetText(""); c.setStatus(""); c.goRefresh() })
 	}()
 }
 
+// setStatus shows a transient status in the header, hiding it when the message
+// is empty (idle) so no permanent "Ready" text lingers.
 func (c *Controller) setStatus(s string) {
 	if c.a == nil {
 		return
 	}
-	fyne.Do(func() { c.statusLbl.SetText(s) })
+	fyne.Do(func() {
+		if s == "" {
+			c.statusLbl.Hide()
+			return
+		}
+		c.statusLbl.SetText(s)
+		c.statusLbl.Show()
+	})
 }
 
 // --- small helpers ---
