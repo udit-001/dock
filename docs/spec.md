@@ -110,7 +110,7 @@ apps:
 
 ### Desktop app (Go + Fyne)
 - Tabs/rows: app icon, display name, description, latest vs installed version, daemon status chip, and Install/Update/Uninstall/Open actions; a Check-now button and an Update-All button at the top.
-- **Installed-version seam:** the manager owns a per-app install dir under a managed root (e.g. `~/.appstore/apps/<id>/<binary>`). Detection = execute `<binary> version` (or `--version`) in that dir, parse `vX.Y.Z`, semver-compare with `apps.json`. Until every app exposes a `version`/`daemon` subcommand, add it to those apps as a prerequisite (see Fleet gaps below).
+- **Installed-version seam:** the manager installs binaries into the OS-standard user bin dir (`~/.local/bin` on Linux/macOS honouring `XDG_BIN_HOME`, `%LOCALAPPDATA%\Programs` on Windows), and detects installed apps across the managed bin root, `$GOBIN`/`$GOPATH/bin`, and `$PATH`. Detection = execute `<binary> version` (or `--version`), parse `vX.Y.Z`, semver-compare with the latest. Until every app exposes a `version`/`daemon` subcommand, add it to those apps as a prerequisite (see Fleet gaps below).
 - **Download seam:** keep the HTTP client behind an interface with a progress callback so the Fyne progress bar can subscribe without the transport knowing about the GUI.
 - **Verify:** sha256 of the downloaded bytes must equal the manifest `sha256` before install.
 - **Atomic swap:** write to `<binary>.new`, then `os.Rename`/replace over the live path. On Windows rename-over-running-file requires the daemon stopped and the target not locked.

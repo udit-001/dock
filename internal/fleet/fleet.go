@@ -19,6 +19,11 @@ const (
 	UpgradeAvailable
 )
 
+// VersionUnknown is the sentinel store.InstalledVersion returns when a binary
+// is present but its version string can't be parsed — we know it's installed,
+// just not which version. Decide maps it to UpToDate (never "Install").
+const VersionUnknown = "installed"
+
 func (s Status) String() string {
 	switch s {
 	case UpToDate:
@@ -46,6 +51,9 @@ func SelectAsset(assets map[string]registry.Asset) (registry.Asset, bool) {
 func Decide(installed, latest string) Status {
 	if installed == "" {
 		return NotInstalled
+	}
+	if installed == VersionUnknown {
+		return UpToDate // present but version unknown → never show "Install"
 	}
 	lv, err := semver.Parse(latest)
 	if err != nil {

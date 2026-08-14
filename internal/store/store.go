@@ -16,6 +16,29 @@ import (
 	"github.com/udit-001/app-store/internal/registry"
 )
 
+// BinRoot returns the OS-standard user bin directory the manager installs
+// binaries into (on PATH on most Unix setups): Linux/macOS use ~/.local/bin
+// (honouring XDG_BIN_HOME), Windows uses %LOCALAPPDATA%\Programs.
+func BinRoot() string {
+	switch runtime.GOOS {
+	case "windows":
+		if lp := os.Getenv("LOCALAPPDATA"); lp != "" {
+			return filepath.Join(lp, "Programs")
+		}
+		if home, err := os.UserHomeDir(); err == nil {
+			return filepath.Join(home, "AppData", "Local", "Programs")
+		}
+	default:
+		if x := os.Getenv("XDG_BIN_HOME"); x != "" {
+			return x
+		}
+		if home, err := os.UserHomeDir(); err == nil {
+			return filepath.Join(home, ".local", "bin")
+		}
+	}
+	return ""
+}
+
 // Manager locates and mutates the per-app install layout under a managed root,
 // and can also detect apps installed in the Go toolchain bin dir (~/go/bin).
 type Manager struct {
@@ -41,9 +64,10 @@ func New(root string, ex exec.Executor) (*Manager, error) {
 	return m, nil
 }
 
-// Dir returns the managed directory for an app.
-func (m *Manager) Dir(id string) string {
-	return filepath.Join(m.Root, id)
+// BinaryPath returns the managed binary path for an app (flat, in the OS bin
+// root — e.g. ~/.local/bin/pharos, not a per-app subfolder).
+func (m *Manager) BinaryPath(ma registry.ManifestApp) string {
+	return filepath.Join(m.Root, binaryName(ma))
 }
 
 // binaryName returns the platform-correct executable filename for a manifest app.
@@ -55,16 +79,11 @@ func binaryName(ma registry.ManifestApp) string {
 	return name
 }
 
-// BinaryPath returns the managed binary path (the fresh-install destination).
-func (m *Manager) BinaryPath(ma registry.ManifestApp) string {
-	return filepath.Join(m.Dir(ma.ID), binaryName(ma))
-}
-
-// Search locates an installed binary for the app, probing the managed root,
+// Search locates an installed binary for the app, probing the managed bin root,
 // then the Go toolchain bin directories (GOBIN, GOPATH/bin), then the PATH.
 func (m *Manager) Search(ma registry.ManifestApp) (string, bool) {
 	name := binaryName(ma)
-	dirs := []string{m.Dir(ma.ID)}
+	dirs := []string{m.Root}
 	if m.ScanSystem {
 		dirs = append(dirs, binDirs()...)
 	}

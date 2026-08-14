@@ -63,7 +63,7 @@ func New() (*Controller, error) {
 	if err != nil {
 		return nil, fmt.Errorf("embedded manifest: %w", err)
 	}
-	st, err := store.New(managedRoot(), nil)
+	st, err := store.New(store.BinRoot(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -94,11 +94,7 @@ func New() (*Controller, error) {
 }
 
 func managedRoot() string {
-	base := "~/.appstore"
-	if home, err := os.UserHomeDir(); err == nil {
-		base = home + "/.appstore"
-	}
-	return base
+	return store.BinRoot()
 }
 
 // content builds the full window content (shared by the real app and the
