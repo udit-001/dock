@@ -15,10 +15,10 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/udit-001/app-store/internal/archive"
-	"github.com/udit-001/app-store/internal/exec"
-	"github.com/udit-001/app-store/internal/registry"
-	"github.com/udit-001/app-store/internal/store"
+	"github.com/udit-001/dock/internal/archive"
+	"github.com/udit-001/dock/internal/exec"
+	"github.com/udit-001/dock/internal/registry"
+	"github.com/udit-001/dock/internal/store"
 )
 
 // Progress reports download progress (done/total; total may be -1 if unknown).

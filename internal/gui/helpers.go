@@ -3,7 +3,7 @@ package gui
 import (
 	"context"
 
-	"github.com/udit-001/app-store/internal/exec"
+	"github.com/udit-001/dock/internal/exec"
 )
 
 // execOS adapts exec.OSExecutor to the Executor interface.

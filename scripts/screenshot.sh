@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # scripts/screenshot.sh <binary> <out.png>
-# Launch the App Store GUI, let it render, capture the screen, then quit it.
+# Launch the Dock GUI, let it render, capture the screen, then quit it.
 # Requires a display and ImageMagick 'import'.
 set -euo pipefail
 BIN="${1:?binary required}"

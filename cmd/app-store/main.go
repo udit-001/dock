@@ -1,10 +1,10 @@
-// Command app-store is the App Store manager: a minimal desktop window that
+// Command app-store is Dock: a minimal desktop window that
 // lists the fleet from the embedded manifest, checks GitHub releases directly,
 // and installs/updates them (stopping/restarting daemons).
 //
 // Install locally (no Mark-of-the-Web) with:
 //
-//	go install github.com/udit-001/app-store@latest
+//	go install github.com/udit-001/dock@latest
 //
 // Headless screenshot (renders the UI off-screen to a PNG, no display needed):
 //
@@ -17,7 +17,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/udit-001/app-store/internal/gui"
+	"github.com/udit-001/dock/internal/gui"
 )
 
 func main() {

@@ -12,9 +12,9 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/udit-001/app-store/internal/exec"
-	"github.com/udit-001/app-store/internal/fleet"
-	"github.com/udit-001/app-store/internal/registry"
+	"github.com/udit-001/dock/internal/exec"
+	"github.com/udit-001/dock/internal/fleet"
+	"github.com/udit-001/dock/internal/registry"
 )
 
 // BinRoot returns the OS-standard user bin directory the manager installs

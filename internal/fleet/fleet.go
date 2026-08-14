@@ -6,8 +6,8 @@ package fleet
 import (
 	"runtime"
 
-	"github.com/udit-001/app-store/internal/registry"
-	"github.com/udit-001/app-store/internal/semver"
+	"github.com/udit-001/dock/internal/registry"
+	"github.com/udit-001/dock/internal/semver"
 )
 
 // Status is the install state of one app.

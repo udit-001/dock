@@ -1,4 +1,4 @@
-module github.com/udit-001/app-store
+module github.com/udit-001/dock
 
 go 1.26.5
 

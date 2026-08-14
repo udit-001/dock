@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # scripts/gen-winres.sh — generate Windows PE resource metadata (.syso) via
-# go-winres, so the App Store .exe carries legitimate company/product/version
+# go-winres, so the Dock .exe carries legitimate company/product/version
 # PE metadata (no Mark-of-the-Web / AV false-positive heuristics on the binary
 # resource side). Mirrors the pattern used by the managed fleet (Pharos/etc).
 #
@@ -33,12 +33,12 @@ if [[ $# -ge 1 ]]; then
         "info": {
           "0409": {
             "CompanyName": "udit-001",
-            "FileDescription": "App Store",
+            "FileDescription": "Dock",
             "FileVersion": "$VERSION",
             "InternalName": "app-store",
             "LegalCopyright": "MIT License",
             "OriginalFilename": "app-store.exe",
-            "ProductName": "App Store",
+            "ProductName": "Dock",
             "ProductVersion": "$VERSION"
           }
         }

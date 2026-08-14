@@ -10,9 +10,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/udit-001/app-store/internal/exec"
-	"github.com/udit-001/app-store/internal/registry"
-	"github.com/udit-001/app-store/internal/store"
+	"github.com/udit-001/dock/internal/exec"
+	"github.com/udit-001/dock/internal/registry"
+	"github.com/udit-001/dock/internal/store"
 )
 
 // fakeSrc writes static content to dest and reports progress.

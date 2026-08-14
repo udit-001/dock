@@ -1,4 +1,4 @@
-# App Store fleet manifest (hand-maintained source of truth)
+# Dock fleet manifest (hand-maintained source of truth)
 #
 # The GitHub Action (update-manifest.yml) reads this and generates apps.json,
 # served to the desktop app via jsDelivr.
@@ -16,7 +16,7 @@
 branch: main
 
 # This repo (owner/repo) hosts the icons; used to build jsDelivr icon URLs.
-repo: udit-001/app-store
+repo: udit-001/dock
 
 apps:
   - id: pharos

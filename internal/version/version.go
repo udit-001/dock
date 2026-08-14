@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// Version is the current version of the App Store manager.
+// Version is the current version of Dock, the app-store manager.
 // Overridden at build time via ldflags, or detected from Go module info.
 var Version = "0.0.1"
 

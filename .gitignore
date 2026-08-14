@@ -1,8 +1,10 @@
 .lific.json
 /dist/
+bin/
 *.exe
 *.zip
 *.tar.gz
-bin/rsrc_windows_amd64.syso
-rsrc_windows_arm64.syso
+*.syso
+winres/winres.json
+coverage.out
 screenshots/

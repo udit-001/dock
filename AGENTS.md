@@ -100,6 +100,6 @@ not build binaries. First ship is `go install` — **no** winget/scoop/brew taps
 
 ## Repo & tracking
 
-`github.com/udit-001/app-store`. Work is tracked on Lific as project **APPS**
+`github.com/udit-001/dock`. Work is tracked on Lific as project **APPS**
 (spec = APPS-1, MVP plan = APPS-PLAN-1; deferred: jsDelivr, Cresto onboarding,
 system-tray background checker + notifications = APPS-7).

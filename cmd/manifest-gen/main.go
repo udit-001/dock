@@ -15,13 +15,13 @@ import (
 	"log"
 	"os"
 
-	"github.com/udit-001/app-store/internal/registry"
+	"github.com/udit-001/dock/internal/registry"
 )
 
 func main() {
 	manifestPath := flag.String("manifest", "internal/appdata/manifest.yaml", "path to manifest.yaml")
 	outPath := flag.String("out", "apps.json", "output apps.json path")
-	repoArg := flag.String("repo", "udit-001/app-store", "owner/repo hosting icons")
+	repoArg := flag.String("repo", "udit-001/dock", "owner/repo hosting icons")
 	branchArg := flag.String("branch", "main", "jsDelivr branch for icon URLs")
 	flag.Parse()
 
@@ -33,7 +33,7 @@ func main() {
 		*repoArg = m.Repo
 	}
 	if *repoArg == "" {
-		*repoArg = "udit-001/app-store"
+		*repoArg = "udit-001/dock"
 	}
 
 	cli := registry.NewGHClient(*repoArg, *branchArg)

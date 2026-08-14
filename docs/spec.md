@@ -1,4 +1,4 @@
-# App Store — Spec
+# Dock — Spec
 
 > Tracker: APPS (lific) · Language decision: **Go (+ Fyne GUI)**
 > Status: spec, ready-for-agent
@@ -15,10 +15,10 @@ A **manifest-driven app manager**:
 
 1. A hand-maintained `manifest.yaml` in *this* repo declares the fleet: each app's GitHub repo, a clean display name, a PNG icon, and the daemon stop/start/status control commands.
 2. A **GitHub Action** (scheduled + manual + on-demand) reads the manifest, calls the GitHub API for each repo (`repos/{owner}/{repo}/releases/latest` and `repos/{owner}/{repo}`), resolves the per-platform binary asset + its sha256 from the uploaded `checksums.txt`, fetches the repo description, and writes a generated **`apps.json`** into the repo.
-3. `apps.json` + the PNG icons are served to the desktop app through **jsDelivr** (`https://cdn.jsdelivr.net/gh/udit-001/app-store@<branch>/apps.json`).
+3. `apps.json` + the PNG icons are served to the desktop app through **jsDelivr** (`https://cdn.jsdelivr.net/gh/udit-001/dock@<branch>/apps.json`).
 4. A **Go + Fyne desktop app** fetches `apps.json`, lists each app (icon, clean name, description, latest version), probes its own managed install directory to detect the **installed version** (via `<binary> version`), semver-compares to show **Up-to-date / Upgrade available / Not installed**, and offers per-app **Install / Update** plus **Update All** and **Check now**. Updates stop the daemon, download + sha256-verify the asset, atomically swap the binary, and restart the daemon.
 
-The whole fleet stays **Go**; the manager is installed via `go install github.com/udit-001/app-store@latest` (locally compiled → no Mark-of-the-Web, no winget dependency).
+The whole fleet stays **Go**; the manager is installed via `go install github.com/udit-001/dock@latest` (locally compiled → no Mark-of-the-Web, no winget dependency).
 
 ## User Stories
 
@@ -34,7 +34,7 @@ The whole fleet stays **Go**; the manager is installed via `go install github.co
 10. As a user, I want to click an app's row/icon to open its GitHub page, so that I can read full docs.
 11. As a user, I want to see whether an installed app's daemon is currently **running or stopped**, so that I know the live state of each service.
 12. As a user, I want a **per-app Uninstall/Stop** capability where the product supports it, so that I can remove a tool I no longer need.
-13. As a user, I want the manager to be installable with `go install github.com/udit-001/app-store@latest` and launched as a real desktop window with proper Windows PE metadata + icon (winres), so that there is no Mark-of-the-Web warning and no winget wait.
+13. As a user, I want the manager to be installable with `go install github.com/udit-001/dock@latest` and launched as a real desktop window with proper Windows PE metadata + icon (winres), so that there is no Mark-of-the-Web warning and no winget wait.
 14. As a maintainer, I want the fleet declared in one `manifest.yaml` so that adding/removing an app is a one-line change.
 15. As a maintainer, I want the GitHub Action to regenerate `apps.json` **without me having to remember to**, so that users always fetch fresh latest versions.
 16. As a maintainer, I want the generated `apps.json` committed to the repo so that jsDelivr serves a versioned, cache-able snapshot.
@@ -82,7 +82,7 @@ apps:
       "repo": "udit-001/pharos",
       "homepage": "https://github.com/udit-001/pharos",
       "description": "…(from GitHub API)…",
-      "icon": "https://cdn.jsdelivr.net/gh/udit-001/app-store@main/assets/icons/pharos.png",
+      "icon": "https://cdn.jsdelivr.net/gh/udit-001/dock@main/assets/icons/pharos.png",
       "daemon": { "has_daemon": true, "stop": […], "start": […], "status": […] },
       "latest_version": "v0.3.0",
       "published_at": "…",
@@ -106,7 +106,7 @@ apps:
 
 ### jsDelivr
 - Serves only metadata: `apps.json` + `assets/icons/*.png`. Binaries are GitHub release URLs (jsDelivr is a repo-content CDN, not a release-asset CDN).
-- URL form `https://cdn.jsdelivr.net/gh/udit-001/app-store@<branch>/…` (default branch `main`). In the manager, the branch is configurable for testing.
+- URL form `https://cdn.jsdelivr.net/gh/udit-001/dock@<branch>/…` (default branch `main`). In the manager, the branch is configurable for testing.
 
 ### Desktop app (Go + Fyne)
 - Tabs/rows: app icon, display name, description, latest vs installed version, daemon status chip, and Install/Update/Uninstall/Open actions; a Check-now button and an Update-All button at the top.

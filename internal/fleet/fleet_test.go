@@ -4,7 +4,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/udit-001/app-store/internal/registry"
+	"github.com/udit-001/dock/internal/registry"
 )
 
 func TestDecide(t *testing.T) {
