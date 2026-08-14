@@ -335,33 +335,32 @@ func (c *Controller) buildRow(r *row) fyne.CanvasObject {
 	statusGlyph := widget.NewIcon(lucide(statusIcon(r.status)))
 	meta := widget.NewLabelWithStyle(versionLine(r), fyne.TextAlignLeading, fyne.TextStyle{})
 
-	// Primary Install/Update + (when installed) Open, grouped and top-right of the
-	// row — on the same line as the title, so they never read as "between" the
-	// title and the description.
-	btn := widget.NewButtonWithIcon(actionButtonLabel(r.status), lucide(luPrimaryIcon(r.status)), func() {
-		if r.status == fleet.NotInstalled || r.status == fleet.UpgradeAvailable {
-			c.goInstall(r)
-		}
-	})
-	btn.Importance = widget.HighImportance
-	if r.status == fleet.UpToDate {
-		btn.Disable()
+	// Action column, stacked vertically: Install/Update only when relevant, Open
+	// only when installed. Update is hidden once the app is up to date.
+	var col []fyne.CanvasObject
+	if r.status != fleet.UpToDate {
+		btn := widget.NewButtonWithIcon(actionButtonLabel(r.status), lucide(luPrimaryIcon(r.status)), func() {
+			if r.status == fleet.NotInstalled || r.status == fleet.UpgradeAvailable {
+				c.goInstall(r)
+			}
+		})
+		btn.Importance = widget.HighImportance
+		col = append(col, btn)
 	}
-	var topActions fyne.CanvasObject
-	if r.status == fleet.NotInstalled {
-		topActions = container.NewHBox(btn)
-	} else {
+	if r.status != fleet.NotInstalled {
 		openBtn := widget.NewButtonWithIcon("Open", lucide("external-link"), func() { c.openApp(r) })
 		openBtn.Importance = widget.LowImportance
-		topActions = container.NewHBox(btn, openBtn)
+		col = append(col, openBtn)
 	}
-	actions := container.NewCenter(topActions)
+	actionCol := container.NewVBox(col...)
 
-	// Layout: [icon] | title ...... [Open/Update] | and beneath: version·size, description.
-	topRow := container.NewBorder(nil, nil, nil, actions, title)
-	info := container.NewVBox(topRow, container.NewHBox(statusGlyph, meta), desc)
+	// Layout: [icon (vertically centered)] | title + version·size + description |
+	// [action column (vertically centered)].
+	info := container.NewVBox(title, container.NewHBox(statusGlyph, meta), desc)
 	inner := container.NewBorder(nil, nil, iconObj, nil, container.NewPadded(info))
-	return container.NewPadded(inner)
+	actions := container.NewCenter(actionCol)
+	body := container.NewBorder(nil, nil, nil, actions, inner)
+	return container.NewPadded(body)
 }
 
 // versionLine renders the muted subtitle under each app, following Gear Lever's
