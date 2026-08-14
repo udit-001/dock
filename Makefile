@@ -19,7 +19,7 @@ LDFLAGS := -s -w \
 	-X github.com/udit-001/app-store/internal/version.Commit=$(GIT_COMMIT) \
 	-X github.com/udit-001/app-store/internal/version.Date=$(BUILD_DATE)
 
-.PHONY: all deps build run test vet tidy gen install winres version screenshot clean
+.PHONY: all deps build run test vet tidy gen install winres version inspect screenshot clean
 
 all: build
 
@@ -46,6 +46,10 @@ test:
 
 vet:
 	go vet ./...
+
+# Dump the widget-tree markup (Playwright-style DOM snapshot) of the UI.
+inspect: build
+	./bin/$(APP) -inspect -
 
 tidy:
 	go mod tidy

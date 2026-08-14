@@ -36,6 +36,23 @@ Install to your Go bin with no MoW:
 go install github.com/udit-001/app-store@latest
 ```
 
+## Inspecting / debugging the UI
+
+Fyne is a native toolkit (not a browser, so no Playwright), but the `fyne`
+`test` driver renders the widget tree off-screen as markup — a Playwright-style
+DOM snapshot:
+
+```bash
+make inspect            # dump the full widget-tree markup to stdout
+./bin/app-store -inspect tree.txt   # ...or write it to a file
+```
+
+The output is a nested `<widget type="*widget.Button">...` tree with positions
+and sizes, so you can see exactly what renders and where. There are also
+automated UI-structure tests (no display, no network) in `internal/gui`
+(`go test ./internal/gui/`) asserting things like "a not-installed app shows
+Install but no Open" and "Update-all hides when nothing is pending".
+
 Windows builds carry proper PE resource metadata via `scripts/gen-winres.sh`
 (`tc-hib/go-winres`), mirroring the managed fleet.
 

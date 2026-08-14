@@ -17,6 +17,7 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/udit-001/app-store/internal/appdata"
@@ -109,6 +110,17 @@ func (c *Controller) content() fyne.CanvasObject {
 	)
 	scroll := container.NewVScroll(c.listBox)
 	return container.NewBorder(header, nil, nil, nil, scroll)
+}
+
+// Inspect renders the UI off-screen (Fyne software driver) and returns a
+// Playwright-style snapshot of the widget tree as text markup. Used by the
+// --inspect flag to debug layout without a display.
+func (c *Controller) Inspect() string {
+	content := c.content() // sets c.listBox + c.updateBtn
+	c.refreshSync()        // populate rows (network in dev; ignored on failure)
+	c.render()             // fill the list before dumping
+	win := test.NewWindow(content)
+	return test.RenderToMarkup(win.Canvas())
 }
 
 // Run opens the main window and blocks.
