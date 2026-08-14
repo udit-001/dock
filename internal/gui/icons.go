@@ -4,7 +4,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/theme"
 
-	"github.com/udit-001/app-store/internal/fleet"
+	"github.com/udit-001/dock/internal/fleet"
 )
 
 // lucide maps a logical icon name to a Fyne built-in themed icon. Fyne's theme
@@ -28,20 +28,6 @@ func lucide(name string) fyne.Resource {
 	default:
 		return theme.ConfirmIcon()
 	}
-}
-
-// statusIcon maps an install state to a recognition glyph (a surface affordance
-// answering "what's going on with this app" at a glance).
-func statusIcon(s fleet.Status) string {
-	switch s {
-	case fleet.NotInstalled:
-		return "download"
-	case fleet.UpToDate:
-		return "circle-check"
-	case fleet.UpgradeAvailable:
-		return "circle-arrow-up"
-	}
-	return "circle-check"
 }
 
 // luPrimaryIcon picks the icon for the primary Install/Update action button.

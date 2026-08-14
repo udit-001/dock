@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"image"
+	"image/color"
 	"image/png"
 	"net/http"
 	"os"
@@ -24,11 +25,11 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
-	"github.com/udit-001/app-store/internal/appdata"
-	"github.com/udit-001/app-store/internal/fleet"
-	"github.com/udit-001/app-store/internal/registry"
-	"github.com/udit-001/app-store/internal/store"
-	"github.com/udit-001/app-store/internal/updater"
+	"github.com/udit-001/dock/internal/appdata"
+	"github.com/udit-001/dock/internal/fleet"
+	"github.com/udit-001/dock/internal/registry"
+	"github.com/udit-001/dock/internal/store"
+	"github.com/udit-001/dock/internal/updater"
 )
 
 // row is one rendered app.
@@ -49,7 +50,10 @@ type Controller struct {
 	engine *updater.Engine
 
 	listBox   *fyne.Container
+	scroll    *container.Scroll
 	updateBtn *widget.Button
+	checkBtn  *widget.Button
+	checking  bool
 	statusLbl *widget.Label
 	errLbl    *widget.Label
 	progress  *widget.ProgressBar
@@ -106,22 +110,37 @@ func (c *Controller) content() fyne.CanvasObject {
 	// Slim header bar (Gear-Lever style): title on the left, actions on the
 	// right. The status label is hidden when idle; progress + action/error lines
 	// sit beneath and only appear when something happens.
-	title := widget.NewLabelWithStyle("App Store", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
-	checkBtn := widget.NewButtonWithIcon("Check for updates", lucide("refresh-cw"), c.goRefresh)
-	right := container.NewHBox(c.statusLbl, c.updateBtn, checkBtn)
+	title := widget.NewLabelWithStyle("Dock", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	c.checkBtn = widget.NewButtonWithIcon("Check for updates", lucide("refresh-cw"), c.goRefresh)
+	// The checking state keeps the same button + refresh icon, only disabled
+	// with a "Checking…" label (no separate spinner). Reserve the widest of the
+	// two labels so the header never shifts when it swaps.
+	busyW := widget.NewLabel("Checking…").MinSize().Width
+	idleW := c.checkBtn.MinSize().Width
+	spotW := busyW
+	if idleW > spotW {
+		spotW = idleW
+	}
+	right := container.NewHBox(c.statusLbl, c.updateBtn,
+		container.New(fixedWidthLayout{Width: spotW + 2}, c.checkBtn))
 	headerRow := container.NewBorder(nil, nil, title, right, nil)
 	header := container.NewVBox(headerRow, c.progress, c.actionLbl, c.errLbl)
 	// Framed list: the whole list sits on a contrasting rounded panel (like Gear
 	// Lever's LibAdwaita ListBox) that stands out from the window background.
 	// The panel is a fixed surface; the rows scroll over it.
+	// The list sits directly on the window background (no separate container
+	// slab), so text contrast is always against the window in both themes and
+	// there is no dark-panel-on-light-theme mismatch. Rows use hover highlights
+	// and dividers for structure.
 	scroll := container.NewVScroll(c.listBox)
-	surface := canvas.NewRectangle(theme.InputBackgroundColor()) // nord1/nord5, contrasts with nord0/nord6
-	surface.CornerRadius = 6
-	panel := container.NewStack(surface, container.NewPadded(scroll))
+	c.scroll = scroll
+	panel := container.NewPadded(scroll)
 	// Breathing room: pad the header so there's a gap above it and between it
 	// and the list, while the Border keeps the list filling the remaining space.
 	headOuter := padTop(container.NewPadded(header), 16)
-	body := container.NewBorder(headOuter, nil, nil, nil, panel)
+	// Fit the panel to its content and center it, rather than letting it stretch
+	// to fill the whole window — a short fleet shouldn't leave a big empty band.
+	body := container.New(panelFitLayout{}, headOuter, panel)
 	// Cap the column width and center it (Bootstrap-container feel) so the list
 	// doesn't sprawl across very wide windows.
 	return container.New(cappedLayout{Max: contentWidth()}, body)
@@ -153,16 +172,17 @@ func windowSize() fyne.Size { return fyne.NewSize(980, 640) }
 // as a PNG. The image can be viewed to inspect visual layout.
 func (c *Controller) RenderPNG(out string) error {
 	a := test.NewApp()
+	a.Settings().SetTheme(newNordTheme()) // keep surface colors coherent with the render
 	content := c.content()
 	rows, firstErr := c.populate()
 	c.rows = rows
 	c.showStatusLine(firstErr)
 	c.render()
-	win := a.NewWindow("App Store")
+	win := a.NewWindow("Dock")
 	win.SetContent(content)
 	win.Resize(windowSize())
 	content.Resize(windowSize())
-	img := software.RenderCanvas(win.Canvas(), newNordTheme())
+	img := software.RenderCanvas(win.Canvas(), a.Settings().Theme())
 	f, err := os.Create(out)
 	if err != nil {
 		return err
@@ -215,9 +235,9 @@ func (c *Controller) seedFixture() ([]*row, error) {
 
 // Run opens the main window and blocks.
 func (c *Controller) Run() {
-	c.a = app.New()
+	c.a = app.NewWithID("github.udit-001.app-store")
 	c.a.Settings().SetTheme(newNordTheme()) // Nord palette, matching the fleet
-	c.win = c.a.NewWindow("App Store")
+	c.win = c.a.NewWindow("Dock")
 	c.win.SetContent(c.content())
 	c.win.SetPadded(true)
 	// Size to the screen resolution (not fullscreen) and center it.
@@ -231,17 +251,41 @@ func (c *Controller) Run() {
 // (make run). Off-screen rendering is not shown to the user.
 
 // goRefresh fetches metadata + installed versions and re-renders (async).
+// Single-flight: while one check is running, further calls are ignored so
+// concurrent fetches can't race on the final render.
 func (c *Controller) goRefresh() {
-	c.setStatus("Checking for updates…")
+	if c.checking {
+		return
+	}
+	c.checking = true
+	c.setChecking(true)
 	go func() {
 		rows, firstErr := c.collect()
 		fyne.Do(func() {
+			c.checking = false
+			c.setChecking(false)
 			c.rows = rows
 			c.render()
 			c.setStatus("")
 			c.showStatusLine(firstErr)
 		})
 	}()
+}
+
+// setChecking flips the "Check for updates" button into its busy state: same
+// button + refresh icon, disabled, labelled "Checking…". Only called from the
+// main thread (button click, startup, or inside a fyne.Do block).
+func (c *Controller) setChecking(on bool) {
+	if c.checkBtn == nil {
+		return
+	}
+	if on {
+		c.checkBtn.SetText("Checking…")
+		c.checkBtn.Disable()
+	} else {
+		c.checkBtn.SetText("Check for updates")
+		c.checkBtn.Enable()
+	}
 }
 
 // collect resolves metadata + detected versions into rows, returning the first
@@ -295,8 +339,19 @@ func (c *Controller) render() {
 			if i > 0 {
 				c.listBox.Add(widget.NewSeparator())
 			}
-			c.listBox.Add(c.buildRow(r))
+			c.listBox.Add(newRowCard(c.buildRow(r)))
 		}
+	}
+	// Make the scroll hug its content so a short fleet doesn't leave a big
+	// empty band: set the scroll's min size to the list's natural size. The
+	// panel layout then caps it to the window and centers it when it fits,
+	// and the inner scroll still takes over when the list overflows.
+	if c.scroll != nil {
+		ms := c.listBox.MinSize()
+		// Headroom below the last row so wrapped description lines aren't clipped
+		// when the panel hugs the content.
+		ms.Height += theme.Padding() * 2
+		c.scroll.SetMinSize(ms)
 	}
 	c.listBox.Refresh()
 	// Update-all is only useful when something is pending (not installed or
@@ -321,25 +376,20 @@ func (c *Controller) hasPending() bool {
 }
 
 func (c *Controller) buildRow(r *row) fyne.CanvasObject {
-	// Square, non-distorted icon drawn from the embedded resource (40px rail).
-	var iconObj fyne.CanvasObject
-	if b, ok := appdata.Icon(r.ma.ID); ok && len(b) > 0 {
-		im := canvas.NewImageFromResource(fyne.NewStaticResource("icon_"+r.ma.ID+".png", b))
-		im.FillMode = canvas.ImageFillContain
-		im.SetMinSize(fyne.NewSize(40, 40))
-		iconObj = container.NewCenter(im)
-	} else {
-		iconObj = canvas.NewImageFromImage(image.NewRGBA(image.Rect(0, 0, 1, 1)))
-	}
-
 	title := widget.NewLabelWithStyle(r.app.DisplayName, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
-	desc := widget.NewLabel(r.app.Description)
-	desc.Wrapping = fyne.TextWrapWord
-	statusGlyph := widget.NewIcon(lucide(statusIcon(r.status)))
-	meta := widget.NewLabelWithStyle(versionLine(r), fyne.TextAlignLeading, fyne.TextStyle{})
+	// Version shown inline next to the title, in brackets and subdued (the row's
+	// lowest visual tier) so "Name (v1.2.3)" reads at a glance. No status glyph:
+	// the action buttons (Install/Update/Launch) already convey install state.
+	ver := canvas.NewText(titleVersion(r), mutedTextColor())
+	titleLine := container.NewHBox(title, ver)
 
-	// Action column, stacked vertically: Install/Update only when relevant, Open
-	// only when installed. Update is hidden once the app is up to date.
+	// Single-line description, truncated at whatever fits the row width (with an
+	// ellipsis) so rows stay uniform regardless of how long the summary is.
+	desc := widget.NewLabel(r.app.Description)
+	desc.Wrapping = fyne.TextTruncate
+
+	// Action column, stacked vertically: Install/Update only when relevant, Launch
+	// only when installed. Centered so the button aligns to the row middle.
 	var col []fyne.CanvasObject
 	if r.status != fleet.UpToDate {
 		btn := widget.NewButtonWithIcon(actionButtonLabel(r.status), lucide(luPrimaryIcon(r.status)), func() {
@@ -351,62 +401,81 @@ func (c *Controller) buildRow(r *row) fyne.CanvasObject {
 		col = append(col, btn)
 	}
 	if r.status != fleet.NotInstalled {
-		openBtn := widget.NewButtonWithIcon("Open", lucide("external-link"), func() { c.openApp(r) })
-		openBtn.Importance = widget.LowImportance
-		col = append(col, openBtn)
+		launchBtn := widget.NewButton("Launch", func() { c.openApp(r) })
+		launchBtn.Importance = widget.MediumImportance
+		col = append(col, launchBtn)
 	}
-	actionCol := container.NewVBox(col...)
+	actionCol := container.NewCenter(container.NewVBox(col...))
 
-	// Layout: [icon (vertically centered)] | title + version·size + description |
-	// [action column (vertically centered)]. Rows are flat — the whole list sits
-	// on one framed background, with separator lines between rows.
-	info := container.NewVBox(title, container.NewHBox(statusGlyph, meta), desc)
-	inner := container.NewBorder(nil, nil, iconObj, nil, info)
-	actions := container.NewCenter(actionCol)
-	body := container.NewBorder(nil, nil, nil, actions, inner)
-	return container.NewPadded(body)
+	// Uniform row: a fixed-height cell whose three columns (icon | text | action)
+	// are all vertically centered by the Border layout. Descriptions that exist
+	// are one line, so every row has the same rhythm and the action button never
+	// floats in dead space.
+	info := container.NewVBox(titleLine, desc)
+	infoCol := container.New(vCenterLayout{}, info)
+	body := container.NewBorder(nil, nil, iconTile(r), actionCol, infoCol)
+	return container.NewPadded(hPad(container.New(minHeightLayout{Min: rowHeight()}, body), cardPad()))
 }
 
-// versionLine renders the muted subtitle under each app, following Gear Lever's
-// "version · size" pattern.
-func versionLine(r *row) string {
-	var v string
-	switch r.status {
-	case fleet.NotInstalled:
-		v = "Not installed · latest " + r.app.LatestVersion
-	case fleet.UpToDate:
-		v = "Installed " + r.app.LatestVersion
-	default:
-		v = fmt.Sprintf("%s → %s", trimV(r.installed), r.app.LatestVersion)
+// iconTile renders the app icon on a consistent rounded tile so icons with
+// different built-in backgrounds read as a uniform rail across rows.
+func iconTile(r *row) fyne.CanvasObject {
+	// Transparent well: reserves a fixed 48px square so rows stay aligned, but
+	// draws no background fill over the card surface.
+	surf := canvas.NewRectangle(color.Transparent)
+	surf.SetMinSize(fyne.NewSize(tileSize(), tileSize()))
+	var img fyne.CanvasObject
+	if b, ok := appdata.Icon(r.ma.ID); ok && len(b) > 0 {
+		im := canvas.NewImageFromResource(fyne.NewStaticResource("icon_"+r.ma.ID+".png", b))
+		im.FillMode = canvas.ImageFillContain
+		im.SetMinSize(fyne.NewSize(tileSize()-12, tileSize()-12))
+		img = container.NewCenter(im)
+	} else {
+		img = canvas.NewImageFromImage(image.NewRGBA(image.Rect(0, 0, 1, 1)))
 	}
-	if sz, ok := sizeFor(r.app); ok {
-		v += " · " + humanSize(sz)
-	}
-	return v
+	return container.NewStack(surf, container.NewCenter(img))
 }
 
-// sizeFor returns the download size (bytes) of the current-platform asset.
-func sizeFor(app *registry.App) (int64, bool) {
-	a, ok := app.Assets[fleet.PlatformKey()]
-	if !ok {
-		return 0, false
+// themed returns the given color name from the ACTIVE theme at the current
+// variant, so a surface color is always coherent with the window background.
+func themed(name fyne.ThemeColorName) color.Color {
+	a := fyne.CurrentApp()
+	if a == nil || a.Settings() == nil {
+		return nordRGB(nord1)
 	}
-	return a.Size, true
+	return a.Settings().Theme().Color(name, themeVariant())
 }
 
-// humanSize formats a byte count compactly.
-func humanSize(n int64) string {
-	const kb = 1024
-	switch {
-	case n >= 1<<30:
-		return fmt.Sprintf("%.1f GB", float64(n)/(1<<30))
-	case n >= 1<<20:
-		return fmt.Sprintf("%.1f MB", float64(n)/(1<<20))
-	case n >= kb:
-		return fmt.Sprintf("%.1f KB", float64(n)/kb)
-	default:
-		return fmt.Sprintf("%d B", n)
+// themeVariant returns the active theme variant (dark/light), defaulting to
+// dark so cards don't collapse into the window when no app is running yet.
+func themeVariant() fyne.ThemeVariant {
+	a := fyne.CurrentApp()
+	if a == nil || a.Settings() == nil {
+		return theme.VariantDark
 	}
+	return a.Settings().ThemeVariant()
+}
+
+// mutedTextColor is the subdued tone for the version tag — the lowest visual
+// tier in a row. It must be dimmer than the description yet still readable
+// (>=4.5:1): dark uses a mid light-gray on the nord1 surface (~4.6:1), light
+// uses nord3 on white (~7.4:1). Different because all of Nord's polar-night
+// shades are too close to nord1 to be legible.
+func mutedTextColor() color.Color {
+	if themeVariant() == theme.VariantLight {
+		return nordRGB(nord3)
+	}
+	return nordRGB(0xA6B1C0)
+}
+
+// titleVersion renders the version shown inline next to the app title, in
+// brackets and muted: "Name (v1.2.3)". Uses the latest release version; for a
+// not-installed app we still show it (that's what "Install" would pull).
+func titleVersion(r *row) string {
+	if r.app == nil || r.app.LatestVersion == "" {
+		return ""
+	}
+	return "(" + r.app.LatestVersion + ")"
 }
 
 // emptyState is the centered placeholder shown when the fleet is empty, mirroring
@@ -443,9 +512,10 @@ func (c *Controller) openApp(r *row) {
 			bin := c.st.Destination(r.ma)
 			c.engine.Exec.Run(context.Background(), bin, r.app.Daemon.StartArgs...)
 		}
-		// The daemon binds asynchronously; wait for it, then hand off to the browser.
+		// The daemon binds asynchronously; wait for it, then hand off to a
+		// standalone browser window (falls back to the default browser tab).
 		waitForURL(target, 6*time.Second)
-		openURLged(target)
+		openStandaloneOrDefault(target)
 	}()
 }
 
@@ -464,6 +534,13 @@ func waitForURL(url string, timeout time.Duration) {
 	}
 }
 
+// setStatusOnGoroutine is setStatus wrapped for use from a background
+// goroutine (thread-safe via fyne.Do).
+func (c *Controller) setStatusOnGoroutine(s string) {
+	fyne.Do(func() { c.setStatus(s) })
+}
+
+// goInstall wires an install/update and its progress to the UI (async).
 func (c *Controller) goInstall(r *row) {
 	c.setStatus(fmt.Sprintf("Installing %s…", r.app.DisplayName))
 	c.errLbl.SetText("")
@@ -503,7 +580,7 @@ func (c *Controller) goUpdateAll() {
 			}
 			status := fleet.Decide(c.st.InstalledVersion(context.Background(), r.ma), r.app.LatestVersion)
 			if status == fleet.NotInstalled || status == fleet.UpgradeAvailable {
-				c.setStatus(fmt.Sprintf("Updating %s…", r.app.DisplayName))
+				c.setStatusOnGoroutine(fmt.Sprintf("Updating %s…", r.app.DisplayName))
 				if err := c.engine.Install(context.Background(), r.ma, r.app, nil); err != nil {
 					fyne.Do(func() { c.errLbl.SetText(fmt.Sprintf("update %s: %v", r.app.DisplayName, err)) })
 				}
@@ -514,30 +591,25 @@ func (c *Controller) goUpdateAll() {
 }
 
 // setStatus shows a transient status in the header, hiding it when the message
-// is empty (idle) so no permanent "Ready" text lingers.
+// is empty (idle) so no permanent "Ready" text lingers. It mutates directly:
+// callers on the main thread call it as-is, and goroutines must wrap the call
+// in fyne.Do (this is the Fyne 2.8 threading model — do NOT call fyne.Do from
+// the main thread or before the event loop starts).
 func (c *Controller) setStatus(s string) {
 	if c.a == nil {
 		return
 	}
-	fyne.Do(func() {
-		if s == "" {
-			c.statusLbl.Hide()
-			return
-		}
-		c.statusLbl.SetText(s)
-		c.statusLbl.Show()
-	})
+	if s == "" {
+		c.statusLbl.Hide()
+		return
+	}
+	c.statusLbl.SetText(s)
+	c.statusLbl.Show()
 }
 
 // --- small helpers ---
 
-func trimV(v string) string {
-	if len(v) > 1 && v[0] == 'v' {
-		return v[1:]
-	}
-	return v
-}
-
+// actionButtonLabel reports the text for the primary Install/Update action.
 func actionButtonLabel(s fleet.Status) string {
 	if s == fleet.NotInstalled {
 		return "Install"

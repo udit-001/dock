@@ -53,7 +53,9 @@ func newNordTheme() fyne.Theme {
 func (t nordTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) color.Color {
 	switch name {
 	case theme.ColorNameBackground:
-		return cOr(nord0, nord6, variant)
+		// Dark = nord0; light = a deeper-than-nord6 gray so the white list card
+		// visibly pops off the window (not a near-identical off-white).
+		return cOr(nord0, nord5, variant)
 	case theme.ColorNameForeground:
 		return cOr(nord4, nord0, variant)
 	case theme.ColorNameButton:
@@ -78,8 +80,19 @@ func (t nordTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) co
 		return nordRGB(nord9)
 	case theme.ColorNameScrollBar:
 		return nordRGB(nord3)
+	case theme.ColorNameSeparator:
+		// Row dividers: a soft-but-visible gray in both themes. Fyne's dark
+		// default is pure black (harsh on nord0) and its light default is
+		// #E3E3E3 (invisible on the nord5 window) — neither fits Nord.
+		return nordRGB(nord3)
 	case theme.ColorNameShadow:
 		return color.NRGBA{R: 0, G: 0, B: 0, A: 0x33}
+	case theme.ColorNamePrimary:
+		// Frost-blue accent (Harbor/Nord identity) used for primary buttons and
+		// selection. Dark label on it to keep the text at >=4.5:1.
+		return nordRGB(nord9)
+	case theme.ColorNameForegroundOnPrimary:
+		return nordRGB(nord0)
 	case theme.ColorNameSuccess:
 		return nordRGB(nord14)
 	case theme.ColorNameError:
