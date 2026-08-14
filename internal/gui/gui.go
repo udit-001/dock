@@ -22,7 +22,6 @@ import (
 	"fyne.io/fyne/v2/driver/software"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/test"
-	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/udit-001/app-store/internal/appdata"
@@ -118,7 +117,10 @@ func (c *Controller) content() fyne.CanvasObject {
 		c.statusLbl,
 	)
 	header := container.NewVBox(top, c.progress, c.actionLbl, c.errLbl)
-	scroll := container.NewVScroll(c.listBox)
+	// Framed list: the whole list sits on ONE background (like Gear Lever's
+	// LibAdwaita ListBox), not per-row cards.
+	listFrame := widget.NewCard("", "", c.listBox)
+	scroll := container.NewVScroll(listFrame)
 	// Breathing room: pad the header so there's a gap above it and between it
 	// and the list, while the Border keeps the list filling the remaining space.
 	headOuter := container.NewPadded(header)
@@ -163,7 +165,7 @@ func (c *Controller) RenderPNG(out string) error {
 	win.SetContent(content)
 	win.Resize(windowSize())
 	content.Resize(windowSize())
-	img := software.RenderCanvas(win.Canvas(), theme.DarkTheme())
+	img := software.RenderCanvas(win.Canvas(), newNordTheme())
 	f, err := os.Create(out)
 	if err != nil {
 		return err
@@ -217,6 +219,7 @@ func (c *Controller) seedFixture() ([]*row, error) {
 // Run opens the main window and blocks.
 func (c *Controller) Run() {
 	c.a = app.New()
+	c.a.Settings().SetTheme(newNordTheme()) // Nord palette, matching the fleet
 	c.win = c.a.NewWindow("App Store")
 	c.win.SetContent(c.content())
 	c.win.SetPadded(true)
@@ -358,9 +361,10 @@ func (c *Controller) buildRow(r *row) fyne.CanvasObject {
 	actionCol := container.NewVBox(col...)
 
 	// Layout: [icon (vertically centered)] | title + version·size + description |
-	// [action column (vertically centered)].
+	// [action column (vertically centered)]. Rows are flat — the whole list sits
+	// on one framed background, with separator lines between rows.
 	info := container.NewVBox(title, container.NewHBox(statusGlyph, meta), desc)
-	inner := container.NewBorder(nil, nil, iconObj, nil, container.NewPadded(info))
+	inner := container.NewBorder(nil, nil, iconObj, nil, info)
 	actions := container.NewCenter(actionCol)
 	body := container.NewBorder(nil, nil, nil, actions, inner)
 	return container.NewPadded(body)
