@@ -9,7 +9,7 @@ import (
 	"github.com/udit-001/app-store/internal/registry"
 )
 
-//go:embed manifest.yaml icons/* apps.json
+//go:embed manifest.yaml icons/* icons/lucide/* apps.json
 var FS embed.FS
 
 // LoadManifest returns the embedded fleet manifest.
@@ -34,5 +34,11 @@ func Fixture() ([]byte, error) {
 // Icon returns the embedded icon PNG bytes for an app id ("" if absent).
 func Icon(id string) ([]byte, bool) {
 	b, err := FS.ReadFile("icons/" + id + ".png")
+	return b, err == nil
+}
+
+// RawLucide returns the raw SVG bytes of an embedded Lucide icon (nil if absent).
+func RawLucide(name string) ([]byte, bool) {
+	b, err := FS.ReadFile("icons/lucide/" + name + ".svg")
 	return b, err == nil
 }

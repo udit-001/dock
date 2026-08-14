@@ -104,21 +104,28 @@ func managedRoot() string {
 // headless screenshot renderer).
 func (c *Controller) content() fyne.CanvasObject {
 	c.listBox = container.NewVBox()
-	c.updateBtn = widget.NewButton("Update all", c.goUpdateAll)
+	c.updateBtn = widget.NewButtonWithIcon("Update all", lucide("download"), c.goUpdateAll)
 	c.updateBtn.Hide()
 	// One compact top row: actions on the left, status right-aligned. The
 	// progress bar + action/error labels sit beneath it but are hidden until
 	// something happens, so they don't reserve a dead band above the list.
 	top := container.NewHBox(
-		widget.NewButton("Check for updates", c.goRefresh),
+		widget.NewButtonWithIcon("Check for updates", lucide("refresh-cw"), c.goRefresh),
 		c.updateBtn,
 		layout.NewSpacer(),
 		c.statusLbl,
 	)
 	header := container.NewVBox(top, c.progress, c.actionLbl, c.errLbl)
 	scroll := container.NewVScroll(c.listBox)
-	return container.NewBorder(header, nil, nil, nil, scroll)
+	body := container.NewBorder(header, nil, nil, nil, scroll)
+	// Cap the column width and center it (Bootstrap-container feel) so the list
+	// doesn't sprawl across very wide windows.
+	return container.New(cappedLayout{Max: contentWidth()}, body)
 }
+
+// contentWidth is the max centered column width on wide windows (Bootstrap:
+// --bs-breakpoint-lg ≈ 960–992 with gutters, we shy under that).
+func contentWidth() float32 { return 860 }
 
 // Inspect renders the UI off-screen (Fyne software driver) and returns a
 // Playwright-style snapshot of the widget tree as text markup. Used by the
@@ -329,7 +336,7 @@ func (c *Controller) buildRow(r *row) fyne.CanvasObject {
 	meta := widget.NewLabelWithStyle(versionLine(r), fyne.TextAlignLeading, fyne.TextStyle{})
 
 	// Install/Update is the primary (accent) action; Open is flat/secondary.
-	btn := widget.NewButton(actionButtonLabel(r.status), func() {
+	btn := widget.NewButtonWithIcon(actionButtonLabel(r.status), lucide(luPrimaryIcon(r.status)), func() {
 		if r.status == fleet.NotInstalled || r.status == fleet.UpgradeAvailable {
 			c.goInstall(r)
 		}
@@ -341,14 +348,17 @@ func (c *Controller) buildRow(r *row) fyne.CanvasObject {
 
 	// Row content: icon on the left, info filling the middle, actions on the
 	// right {"Install/Update" + "Open" when installed} — all vertically centered.
-	info := container.NewVBox(title, desc, meta)
+	// A state glyph sits beside the version line for at-a-glance recognition.
+	statusBadge := widget.NewIcon(lucide(statusIcon(r.status)))
+	metaRow := container.NewHBox(statusBadge, meta)
+	info := container.NewVBox(title, desc, metaRow)
 	inner := container.NewBorder(nil, nil, iconObj, nil, container.NewPadded(info))
 	if r.status == fleet.NotInstalled {
 		actions := container.NewCenter(container.NewVBox(btn))
 		body := container.NewBorder(nil, nil, nil, actions, inner)
 		return container.NewPadded(body)
 	}
-	openBtn := widget.NewButton("Open", func() { openURLged(r.app.Homepage) })
+	openBtn := widget.NewButtonWithIcon("Open", lucide("external-link"), func() { openURLged(r.app.Homepage) })
 	openBtn.Importance = widget.LowImportance
 	actions := container.NewCenter(container.NewVBox(btn, openBtn))
 	body := container.NewBorder(nil, nil, nil, actions, inner)
@@ -405,7 +415,7 @@ func (c *Controller) emptyState() fyne.CanvasObject {
 		fyne.TextAlignCenter, fyne.TextStyle{})
 	hint.Wrapping = fyne.TextWrapWord
 	return container.NewCenter(container.NewVBox(
-		widget.NewIcon(theme.InfoIcon()),
+		widget.NewIcon(lucide("package")),
 		title,
 		hint,
 	))
