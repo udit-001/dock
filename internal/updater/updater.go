@@ -18,6 +18,7 @@ import (
 	"github.com/udit-001/dock/internal/archive"
 	"github.com/udit-001/dock/internal/catalog"
 	"github.com/udit-001/dock/internal/exec"
+	"github.com/udit-001/dock/internal/fleet"
 	"github.com/udit-001/dock/internal/store"
 )
 
@@ -138,7 +139,7 @@ func (e *Engine) stopper() exec.Stopper {
 // Install ensures the latest release of app is installed, stopping/restarting a
 // daemon when the app declares one. progress optionally receives staged bytes.
 func (e *Engine) Install(ctx context.Context, ma catalog.ManifestApp, app *catalog.App, progress Progress) error {
-	asset, ok := registryasset(app, ma)
+	asset, ok := fleet.SelectAsset(app.Assets)
 	if !ok {
 		return fmt.Errorf("no asset for this platform (%s/%s)", runtime.GOOS, runtime.GOARCH)
 	}
@@ -215,9 +216,4 @@ func (e *Engine) downloadAndStage(ctx context.Context, ma catalog.ManifestApp, a
 		return staged, cleanup, nil
 	}
 	return "", cleanup, fmt.Errorf("unhandled asset %q", asset.FileName)
-}
-
-func registryasset(app *catalog.App, ma catalog.ManifestApp) (catalog.Asset, bool) {
-	a, ok := app.Assets[runtime.GOOS+"/"+runtime.GOARCH]
-	return a, ok
 }
