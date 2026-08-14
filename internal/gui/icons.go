@@ -4,22 +4,30 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/theme"
 
-	"github.com/udit-001/app-store/internal/appdata"
 	"github.com/udit-001/app-store/internal/fleet"
 )
 
-// lucide returns a theme-aware resource for an embedded Lucide icon name. Fyne
-// recolors the SVG to the current theme foreground, so the glyph adapts to the
-// dark/light scheme (like LibAdwaita/Adwaita icons). Returns nil if absent.
+// lucide maps a logical icon name to a Fyne built-in themed icon. Fyne's theme
+// icons always render and are recolored to the current theme automatically
+// (they're the robust equivalent of the Lucide glyphs we want). Returns a safe
+// fallback so call sites never receive nil.
 func lucide(name string) fyne.Resource {
-	if name == "" {
-		return nil
+	switch name {
+	case "refresh-cw":
+		return theme.ViewRefreshIcon() // Check for updates / Update
+	case "download":
+		return theme.DownloadIcon() // Install / Update all
+	case "external-link":
+		return theme.VisibilityIcon() // Open
+	case "circle-check":
+		return theme.ConfirmIcon() // up to date
+	case "circle-arrow-up":
+		return theme.ViewRefreshIcon() // update available
+	case "package":
+		return theme.StorageIcon() // empty state
+	default:
+		return theme.ConfirmIcon()
 	}
-	b, ok := appdata.RawLucide(name)
-	if !ok {
-		return nil
-	}
-	return theme.NewThemedResource(fyne.NewStaticResource(name+".svg", b))
 }
 
 // statusIcon maps an install state to a recognition glyph (a surface affordance
@@ -33,7 +41,7 @@ func statusIcon(s fleet.Status) string {
 	case fleet.UpgradeAvailable:
 		return "circle-arrow-up"
 	}
-	return "check"
+	return "circle-check"
 }
 
 // luPrimaryIcon picks the icon for the primary Install/Update action button.
@@ -44,5 +52,5 @@ func luPrimaryIcon(s fleet.Status) string {
 	case fleet.UpgradeAvailable:
 		return "refresh-cw"
 	}
-	return "check" // up-to-date primary is disabled; harmless icon
+	return "check"
 }
