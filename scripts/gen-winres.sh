@@ -9,7 +9,9 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WINRES_JSON="$ROOT/winres/winres.json"
-OUT_DIR="$ROOT/cmd/app-store"
+# .syso must sit in the package directory being built, which is the module
+# root (main.go) after the app entry moved there.
+OUT_DIR="$ROOT"
 
 GOPATH_BIN="$(go env GOPATH)/bin"
 if ! command -v go-winres >/dev/null 2>&1 && [ -x "$GOPATH_BIN/go-winres" ]; then
@@ -35,9 +37,9 @@ if [[ $# -ge 1 ]]; then
             "CompanyName": "udit-001",
             "FileDescription": "Dock",
             "FileVersion": "$VERSION",
-            "InternalName": "app-store",
+            "InternalName": "dock",
             "LegalCopyright": "MIT License",
-            "OriginalFilename": "app-store.exe",
+            "OriginalFilename": "dock.exe",
             "ProductName": "Dock",
             "ProductVersion": "$VERSION"
           }
@@ -45,11 +47,11 @@ if [[ $# -ge 1 ]]; then
       }
     }
   },
-  "RT_GROUP_ICON": { "#1": { "0000": "appstore.ico" } },
+  "RT_GROUP_ICON": { "#1": { "0000": "dock.ico" } },
   "RT_MANIFEST": {
     "#1": {
       "0409": {
-        "identity": { "name": "app-store", "version": "$QUAD" },
+        "identity": { "name": "dock", "version": "$QUAD" },
         "description": "Desktop manager for the self-hosted Go fleet",
         "execution-level": "as invoker",
         "dpi-awareness": "PerMonitorV2",

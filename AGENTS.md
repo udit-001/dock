@@ -39,13 +39,13 @@ Prefer the Makefile; raw `go build/test ./...` **will not link** Fyne without
 the CGO flags that `make` exports (`deps` creates the local Xlib symlink).
 
 - `make deps` — ensure `~/.local/lib/libXxf86vm.so` + fetch deps
-- `make build` → `bin/app-store` · `make run` — build & open the desktop app
+- `make build` → `bin/dock` · `make run` — build & open the desktop app
 - `make test` — `go test ./...` · `make vet`
 - `make check` — static-analysis gate: `go vet` + pinned `staticcheck` (U1000
   dead-code + deprecations; fails on unused symbols like `managedRoot`)
 - `make inspect` — dump the widget-tree markup (Fyne test driver, displayless)
 - `make gen` — regenerate `apps.json` from the manifest
-- `make winres` — regenerate Windows PE `.syso` into `cmd/app-store/`
+- `make winres` — regenerate Windows PE `.syso` into the module root (next to `main.go`)
 - `make install` — `go install` (no Mark-of-the-Web) · `make version`
 
 ## Layout (deep modules)

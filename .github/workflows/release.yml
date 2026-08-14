@@ -4,7 +4,7 @@
 # + a merged checksums.txt to the GitHub release.
 #
 # Distribution model: Linux/macOS users download the binaries; Windows users
-# `go install github.com/udit-001/app-store@latest` (or download the .tar.gz).
+# `go install github.com/udit-001/dock@latest` (or download the .tar.gz).
 
 name: Release
 
@@ -77,14 +77,14 @@ jobs:
         run: |
           go build -trimpath -tags migrated_fynedo \
             -ldflags "-s -w" \
-            -o app-store${{ matrix.ext }} ./cmd/app-store
+            -o dock${{ matrix.ext }} .
 
       - name: Package
         shell: bash
         run: |
           mkdir -p dist
-          ARCHIVE="app-store_${{ github.ref_name }}_${{ matrix.goos }}_${{ matrix.goarch }}.tar.gz"
-          tar -czf "$ARCHIVE" app-store${{ matrix.ext }} README.md
+          ARCHIVE="dock_${{ github.ref_name }}_${{ matrix.goos }}_${{ matrix.goarch }}.tar.gz"
+          tar -czf "$ARCHIVE" dock${{ matrix.ext }} README.md
           sha256sum "$ARCHIVE" > "dist/checksums_${{ matrix.goos }}_${{ matrix.goarch }}.txt"
           mv "$ARCHIVE" dist/
 
@@ -112,4 +112,4 @@ jobs:
         run: |
           find release -name 'checksums_*.txt' -exec cat {} \; | sort -k2 > checksums.txt
           gh release create "${{ github.ref_name }}" --generate-notes 2>/dev/null || true
-          gh release upload "${{ github.ref_name }}" release/*/app-store_*.tar.gz checksums.txt --clobber
+          gh release upload "${{ github.ref_name }}" release/*/dock_*.tar.gz checksums.txt --clobber

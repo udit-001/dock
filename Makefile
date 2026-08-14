@@ -2,7 +2,7 @@
 # Note: Fyne/GLFW needs the unversioned X11 dev symlink (libXxf86vm.so) which
 # this machine lacks; `deps` creates a local one and sets CGO_LDFLAGS.
 
-APP      := app-store
+APP      := dock
 BIN     := bin
 OUT     := $(BIN)/$(APP)
 LOCALLIB := $(HOME)/.local/lib
@@ -15,7 +15,7 @@ TAGS     := migrated_fynedo
 
 VERSION_MAJOR := 0
 VERSION_MINOR := 0
-VERSION_PATCH := 1
+VERSION_PATCH := 2
 GIT_COMMIT   := $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
 
 LDFLAGS := -s -w
@@ -35,7 +35,7 @@ deps:
 
 build: deps
 	@mkdir -p $(BIN)
-	go build -trimpath -tags $(TAGS) -ldflags "$(LDFLAGS)" -o $(OUT) ./cmd/$(APP)
+	go build -trimpath -tags $(TAGS) -ldflags "$(LDFLAGS)" -o $(OUT) .
 
 # View the desktop app. (Off-screen captures aren't shown to the user; run this
 # on a machine with a display.)
@@ -74,7 +74,7 @@ winres:
 	./scripts/gen-winres.sh $(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_PATCH)
 
 install:
-	go install -trimpath -tags $(TAGS) -ldflags "$(LDFLAGS)" ./cmd/$(APP)
+	go install -trimpath -tags $(TAGS) -ldflags "$(LDFLAGS)" .
 
 version:
 	@echo "v$(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_PATCH) ($(GIT_COMMIT))"

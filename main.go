@@ -1,4 +1,4 @@
-// Command app-store is Dock: a minimal desktop window that
+// Command dock is Dock: a minimal desktop window that
 // lists the fleet from the embedded manifest, checks GitHub releases directly,
 // and installs/updates them (stopping/restarting daemons).
 //
@@ -8,7 +8,7 @@
 //
 // Headless screenshot (renders the UI off-screen to a PNG, no display needed):
 //
-//	app-store --screenshot out.png
+//	dock --screenshot out.png
 package main
 
 import (
@@ -27,7 +27,7 @@ func main() {
 
 	c, err := gui.New()
 	if err != nil {
-		log.Fatalf("app-store: %v", err)
+		log.Fatalf("dock: %v", err)
 	}
 	if *shotPath != "" {
 		if err := c.RenderPNG(*shotPath); err != nil {

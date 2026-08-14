@@ -236,7 +236,7 @@ func (c *Controller) setUpdated(t time.Time) {
 
 // Run opens the main window and blocks.
 func (c *Controller) Run() {
-	c.a = app.NewWithID("github.udit-001.app-store")
+	c.a = app.NewWithID("github.udit-001.dock")
 	c.a.Settings().SetTheme(newNordTheme()) // Nord palette, matching the fleet
 	c.win = c.a.NewWindow("Dock")
 	c.win.SetContent(c.content())

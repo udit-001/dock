@@ -8,7 +8,7 @@
 
 version: 2
 
-project_name: app-store
+project_name: dock
 
 before:
   hooks:
@@ -16,9 +16,9 @@ before:
     - ./scripts/gen-winres.sh {{ .Version }}
 
 builds:
-  - id: app-store
-    main: ./cmd/app-store
-    binary: app-store
+  - id: dock
+    main: .
+    binary: dock
     # Fyne/GLFW needs CGO — CGO_ENABLED=0 cannot link a windowed binary.
     # CI does NOT use this for cross-compiling: .github/workflows/release.yml
     # builds natively per-OS with CGO enabled. This config is for a local
@@ -72,7 +72,7 @@ changelog:
 release:
   github:
     owner: udit-001
-    name: app-store
+    name: dock
   prerelease: auto
   name_template: 'v{{ .Version }}'
 

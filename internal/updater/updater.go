@@ -180,7 +180,7 @@ func (e *Engine) controlDaemon(ctx context.Context, ma catalog.ManifestApp, app 
 // downloadAndStage fetches the asset (converting archives to a single binary),
 // verifies its sha256, and returns the staged binary path + a cleanup func.
 func (e *Engine) downloadAndStage(ctx context.Context, ma catalog.ManifestApp, app *catalog.App, asset catalog.Asset, progress Progress) (string, func(), error) {
-	dir, err := os.MkdirTemp("", "appstore-*")
+	dir, err := os.MkdirTemp("", "dock-*")
 	if err != nil {
 		return "", func() {}, err
 	}
