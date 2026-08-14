@@ -48,7 +48,7 @@ func (c *GHClient) ResolveApp(ma ManifestApp) (*App, error) {
 		DisplayName:   ma.DisplayName,
 		Repo:          ma.Repo,
 		Homepage:      repoMeta.HtmlURL,
-		Description:   repoMeta.Description,
+		Description:   descOr(ma.Description, repoMeta.Description),
 		Binary:        ma.Binary,
 		OpenURL:       ma.OpenURL,
 		LatestVersion: rel.TagName,
@@ -93,6 +93,16 @@ func (c *GHClient) ResolveApp(ma ManifestApp) (*App, error) {
 		return nil, fmt.Errorf("no platform assets resolved for release %s", rel.TagName)
 	}
 	return app, nil
+}
+
+// descOr returns the hand-written YAML description when present, otherwise the
+// repo's own description — the YAML is the source of truth, the repo is a
+// fallback for empty fields.
+func descOr(yaml, repo string) string {
+	if yaml != "" {
+		return yaml
+	}
+	return repo
 }
 
 // resolvedAsset is what resolve picked for one platform.

@@ -22,6 +22,7 @@ type ManifestApp struct {
 	ID          string   `yaml:"id"`
 	Repo        string   `yaml:"repo"`
 	DisplayName string   `yaml:"display_name"`
+	Description string   `yaml:"description"`
 	Icon        string   `yaml:"icon"`
 	Binary      string   `yaml:"binary"`
 	OpenURL     string   `yaml:"open_url"`

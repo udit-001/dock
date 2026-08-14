@@ -22,6 +22,7 @@ apps:
   - id: pharos
     repo: udit-001/pharos
     display_name: Pharos
+    description: AI Guided Learning Workspace
     icon: assets/icons/pharos.png
     binary: pharos
     open_url: http://127.0.0.1:9090
@@ -37,6 +38,7 @@ apps:
   - id: harbor
     repo: udit-001/harbor
     display_name: Harbor
+    description: Local library for the HTML pages your agent builds — import, organize, search, and review.
     icon: assets/icons/harbor.png
     binary: harbor
     open_url: http://127.0.0.1:9090
@@ -51,6 +53,7 @@ apps:
   - id: waypoint
     repo: udit-001/waypoint
     display_name: Waypoint
+    description: Track job applications from the CLI and browser. AI-powered cover letters, resume optimization, and interview prep.
     icon: assets/icons/waypoint.png
     binary: waypoint
     open_url: http://127.0.0.1:8080
