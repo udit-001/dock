@@ -17,6 +17,7 @@ func TestDecide(t *testing.T) {
 		{"v0.9.2", "v0.9.3", UpgradeAvailable},
 		{"v1.0.0", "v0.9.3", UpToDate},
 		{"dev", "v0.9.3", UpgradeAvailable}, // old pseudo-version → update
+		{VersionUnknown, "v0.9.3", UpToDate}, // present, unknown version
 	}
 	for _, c := range cases {
 		if got := Decide(c.installed, c.latest); got != c.want {

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/udit-001/app-store/internal/exec"
+	"github.com/udit-001/app-store/internal/fleet"
 	"github.com/udit-001/app-store/internal/registry"
 )
 
@@ -47,6 +48,30 @@ func TestInstalledVersion(t *testing.T) {
 	}
 	if got := m.InstalledVersion(context.Background(), ma); got != "v0.12.0" {
 		t.Fatalf("InstalledVersion=%q want v0.12.0", got)
+	}
+}
+
+func TestInstalledVersionUnparseableIsInstalled(t *testing.T) {
+	// A present binary whose version output we can't parse must read as installed
+	// (never "Not installed → Install").
+	m, err := New(t.TempDir(), exec.StaticExecutor{Out: "some unrecognizable output"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.ScanSystem = false
+	ma := registry.ManifestApp{ID: "app", Binary: "app"}
+	if err := os.MkdirAll(filepath.Dir(m.BinaryPath(ma)), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(m.BinaryPath(ma), []byte("x"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	got := m.InstalledVersion(context.Background(), ma)
+	if got != fleet.VersionUnknown {
+		t.Fatalf("InstalledVersion=%q want VersionUnknown(%q)", got, fleet.VersionUnknown)
+	}
+	if fleet.Decide(got, "v0.9.3") != fleet.UpToDate {
+		t.Fatal("present-but-unparseable must be Up to date, not Not installed")
 	}
 }
 

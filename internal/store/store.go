@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/udit-001/app-store/internal/exec"
+	"github.com/udit-001/app-store/internal/fleet"
 	"github.com/udit-001/app-store/internal/registry"
 )
 
@@ -138,8 +139,10 @@ func isFile(p string) bool {
 var versionRe = regexp.MustCompile(`v?(\d+)\.(\d+)\.(\d+)`)
 
 // InstalledVersion detects the installed version of a manifest app by running
-// "<binary> version" (or --version) at its installed location (managed root,
-// Go toolchain bin, or PATH). Returns "" if not installed or unreadable.
+// "<binary> version" (or --version) at its installed location (managed bin root,
+// Go toolchain bin, or PATH). Returns "" if not installed, or fleet.VersionUnknown
+// when the binary is present but its version string can't be parsed (so Decide
+// never falls back to "Not installed → Install").
 func (m *Manager) InstalledVersion(ctx context.Context, ma registry.ManifestApp) string {
 	path, ok := m.Search(ma)
 	if !ok {
@@ -149,7 +152,10 @@ func (m *Manager) InstalledVersion(ctx context.Context, ma registry.ManifestApp)
 	if out == "" {
 		out, _ = m.Exec.Run(ctx, path, "--version")
 	}
-	return extractVersion(out)
+	if v := extractVersion(out); v != "" {
+		return v
+	}
+	return fleet.VersionUnknown
 }
 
 // extractVersion pulls the first semver-looking triple from CLI output.
