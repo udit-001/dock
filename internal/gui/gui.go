@@ -186,7 +186,7 @@ func (c *Controller) RenderPNG(out string) error {
 func (c *Controller) populate() ([]snapshot.Row, string) {
 	res, err := c.loader.FromFile("apps.json")
 	if err != nil {
-		return nil, err.Error()
+		return nil, "no apps.json at the repo root — run `make gen` to regenerate it"
 	}
 	c.setUpdated(res.GeneratedAt)
 	return res.Rows, ""

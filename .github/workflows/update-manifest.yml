@@ -24,21 +24,20 @@ jobs:
           go-version-file: go.mod
 
       # Resolve latest releases for every app in the embedded manifest and write
-      # both apps.json copies (repo root, served via jsDelivr, and the embedded
-      # offline fallback). Plain github.com/.../releases/download URLs + sha256
-      # from checksums.txt.
+      # the repo-root apps.json (served via jsDelivr). The desktop app fetches
+      # and caches this at runtime — no embedded copy. Plain
+      # github.com/.../releases/download URLs + sha256 from checksums.txt.
       - name: Generate apps.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          go run ./cmd/manifest-gen -manifest internal/appdata/manifest.yaml -out internal/appdata/apps.json
-          cp internal/appdata/apps.json apps.json
+          go run ./cmd/manifest-gen -manifest internal/appdata/manifest.yaml -out apps.json
 
       - name: Commit apps.json
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add internal/appdata/apps.json apps.json
+          git add apps.json
           if git diff --cached --quiet; then
             echo "No changes"
           else

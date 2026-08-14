@@ -27,12 +27,11 @@ anchor everything:
 - `internal/appdata/manifest.yaml` — the **hand-maintained fleet list** (name,
   description, repo, binary, platforms, daemon). Input to the generator only.
 - `.github/workflows/update-manifest.yml` — reads the manifest, resolves each
-  repo's **strict `releases/latest`**, writes both `apps.json` copies (repo
-  root = jsDelivr + embedded fallback). Triggers: daily cron, manual, or a
-  manifest edit.
-- The **app** reads only `apps.json` (jsDelivr → embedded fixture fallback) and
-  **never calls the GitHub API**. Downloads still use plain
-  `github.com/.../releases/download` URLs.
+  repo's **strict `releases/latest`**, writes the repo-root `apps.json` (jsDelivr
+  source). Triggers: daily cron, manual, or a manifest edit.
+- The **app** reads only `apps.json` (jsDelivr → local cache fallback, via
+  `internal/snapshot`) and **never calls the GitHub API**. Downloads still use
+  plain `github.com/.../releases/download` URLs.
 
 ## Commands
 
@@ -54,7 +53,8 @@ the CGO flags that `make` exports (`deps` creates the local Xlib symlink).
 Each core package is one **module** with a small interface:
 
 - `internal/appdata` — the embedded manifest + icons; single source for the
-  generator. Never keep a second manifest.
+  generator. Never keep a second manifest. `apps.json` is NOT embedded (the app
+  fetches + caches it via `internal/snapshot`).
 - `internal/registry` — the **generator's** GitHub client: release metadata,
   per-platform assets from the GoReleaser name template, sha256 from
   `checksums.txt`. `ResolveApp` is the generator path — not the app's.
