@@ -9,9 +9,11 @@ import (
 	"fmt"
 	"image"
 	"image/png"
+	"net/http"
 	"os"
 	"os/exec"
 	"runtime"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -212,13 +214,15 @@ func (c *Controller) seedFixture() ([]*row, error) {
 	return rows, nil
 }
 
-// Run opens the main window and blocks.
+// Run opens the main window maximized and blocks.
 func (c *Controller) Run() {
 	c.a = app.New()
 	c.win = c.a.NewWindow("App Store")
 	c.win.SetContent(c.content())
 	c.win.SetPadded(true)
-	// Wider window gives app descriptions more room to breathe.
+	// Fyne has no Maximize(); SetFullScreen is the closest "fill the screen on
+	// launch" (hides window chrome). Resize stays as the non-fullscreen fallback.
+	c.win.SetFullScreen(true)
 	c.win.Resize(windowSize())
 	c.goRefresh()
 	c.win.ShowAndRun()
@@ -419,9 +423,11 @@ func (c *Controller) emptyState() fyne.CanvasObject {
 	))
 }
 
-// openApp opens an installed web app in the browser. It first ensures the app's
-// dashboard daemon is running (the fleet's `binary start` self-daemonizes and is
-// idempotent), then opens its local dashboard URL (open_url).
+// openApp opens an installed web app's dashboard in the browser. These apps are
+// not desktop apps: they serve a local web UI, and their `binary start` only
+// backgrounds the server (it does NOT auto-launch the browser). So Open starts
+// the dashboard if needed, waits until it accepts connections, then opens the
+// browser to the local open_url.
 func (c *Controller) openApp(r *row) {
 	if r.app == nil {
 		return
@@ -429,14 +435,33 @@ func (c *Controller) openApp(r *row) {
 	target := r.app.OpenURL
 	if target == "" {
 		target = r.app.Homepage
+		openURLged(target)
+		return
 	}
 	go func() {
 		if r.app.Daemon != nil && r.app.Daemon.HasDaemon && len(r.app.Daemon.StartArgs) > 0 {
 			bin := c.st.Destination(r.ma)
 			c.engine.Exec.Run(context.Background(), bin, r.app.Daemon.StartArgs...)
 		}
+		// The daemon binds asynchronously; wait for it, then hand off to the browser.
+		waitForURL(target, 6*time.Second)
+		openURLged(target)
 	}()
-	openURLged(target)
+}
+
+// waitForURL polls a local dashboard URL until it responds (up to timeout ms),
+// so the browser opens against a live server instead of a connection-refused page.
+func waitForURL(url string, timeout time.Duration) {
+	client := &http.Client{Timeout: 800 * time.Millisecond}
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		resp, err := client.Get(url)
+		if err == nil {
+			resp.Body.Close()
+			return
+		}
+		time.Sleep(400 * time.Millisecond)
+	}
 }
 
 func (c *Controller) goInstall(r *row) {
