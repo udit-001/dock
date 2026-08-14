@@ -50,6 +50,7 @@ func (c *GHClient) ResolveApp(ma ManifestApp) (*App, error) {
 		Homepage:      repoMeta.HtmlURL,
 		Description:   repoMeta.Description,
 		Binary:        ma.Binary,
+		OpenURL:       ma.OpenURL,
 		LatestVersion: rel.TagName,
 		PublishedAt:   rel.PublishedAt,
 		Prerelease:    rel.Prerelease,

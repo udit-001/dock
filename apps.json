@@ -39,14 +39,15 @@
           "size": 15523328,
           "filename": "pharos_0.9.3_windows_amd64.exe"
         }
-      }
+      },
+      "open_url": "http://127.0.0.1:9090"
     },
     {
       "id": "harbor",
       "display_name": "Harbor",
       "repo": "udit-001/harbor",
       "homepage": "https://github.com/udit-001/harbor",
-      "description": "Local library for the HTML pages your agent builds — import, organize, search, and review.",
+      "description": "Local library for the HTML pages your agent builds \u2014 import, organize, search, and review.",
       "icon": "https://cdn.jsdelivr.net/gh/udit-001/app-store@main/assets/icons/harbor.png",
       "daemon": {
         "has_daemon": true,
@@ -79,7 +80,8 @@
           "size": 14358016,
           "filename": "harbor_0.2.0_windows_amd64.exe"
         }
-      }
+      },
+      "open_url": "http://127.0.0.1:9090"
     },
     {
       "id": "waypoint",
@@ -119,7 +121,8 @@
           "size": 5665273,
           "filename": "waypoint_0.12.0_windows_amd64.zip"
         }
-      }
+      },
+      "open_url": "http://127.0.0.1:8080"
     }
   ]
 }

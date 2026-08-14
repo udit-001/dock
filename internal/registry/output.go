@@ -25,6 +25,7 @@ type App struct {
 	Icon          string        `json:"icon"`
 	Daemon        *DaemonOut    `json:"daemon"`
 	Binary        string        `json:"binary"`
+	OpenURL       string        `json:"open_url"`
 	LatestVersion string        `json:"latest_version"`
 	PublishedAt   string        `json:"published_at"`
 	Prerelease    bool          `json:"prerelease"`

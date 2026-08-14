@@ -24,6 +24,7 @@ type ManifestApp struct {
 	DisplayName string   `yaml:"display_name"`
 	Icon        string   `yaml:"icon"`
 	Binary      string   `yaml:"binary"`
+	OpenURL     string   `yaml:"open_url"`
 	ReleaseName string   `yaml:"release_name"`
 	Daemon      *Daemon  `yaml:"daemon"`
 	Platforms   []string `yaml:"platforms"`

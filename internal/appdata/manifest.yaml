@@ -24,6 +24,7 @@ apps:
     display_name: Pharos
     icon: assets/icons/pharos.png
     binary: pharos
+    open_url: http://127.0.0.1:9090
     # project_name in the repo's .goreleaser.yaml (for asset-name resolution).
     release_name: pharos
     daemon:
@@ -38,6 +39,7 @@ apps:
     display_name: Harbor
     icon: assets/icons/harbor.png
     binary: harbor
+    open_url: http://127.0.0.1:9090
     release_name: harbor
     daemon:
       start_args: [start]
@@ -51,6 +53,7 @@ apps:
     display_name: Waypoint
     icon: assets/icons/waypoint.png
     binary: waypoint
+    open_url: http://127.0.0.1:8080
     release_name: waypoint
     daemon:
       start_args: [start]

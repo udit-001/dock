@@ -117,7 +117,10 @@ func (c *Controller) content() fyne.CanvasObject {
 	)
 	header := container.NewVBox(top, c.progress, c.actionLbl, c.errLbl)
 	scroll := container.NewVScroll(c.listBox)
-	body := container.NewBorder(header, nil, nil, nil, scroll)
+	// Breathing room: pad the header so there's a gap above it and between it
+	// and the list, while the Border keeps the list filling the remaining space.
+	headOuter := container.NewPadded(header)
+	body := container.NewBorder(headOuter, nil, nil, nil, scroll)
 	// Cap the column width and center it (Bootstrap-container feel) so the list
 	// doesn't sprawl across very wide windows.
 	return container.New(cappedLayout{Max: contentWidth()}, body)
@@ -315,27 +318,26 @@ func (c *Controller) hasPending() bool {
 }
 
 func (c *Controller) buildRow(r *row) fyne.CanvasObject {
-	// Square, non-distorted icon drawn from the embedded resource: FillMode
-	// contain keeps the 512px art scaled to fit a 40px rail.
+	// Square, non-distorted icon drawn from the embedded resource (40px rail).
 	var iconObj fyne.CanvasObject
 	if b, ok := appdata.Icon(r.ma.ID); ok && len(b) > 0 {
 		im := canvas.NewImageFromResource(fyne.NewStaticResource("icon_"+r.ma.ID+".png", b))
 		im.FillMode = canvas.ImageFillContain
 		im.SetMinSize(fyne.NewSize(40, 40))
-		iconObj = container.NewCenter(im) // vertical-center the icon in its rail
+		iconObj = container.NewCenter(im)
 	} else {
 		iconObj = canvas.NewImageFromImage(image.NewRGBA(image.Rect(0, 0, 1, 1)))
 	}
 
-	// Gear-Lever-style info column: heading name, one-line description,
-	// then a muted "version · size" subtitle.
 	title := widget.NewLabelWithStyle(r.app.DisplayName, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
 	desc := widget.NewLabel(r.app.Description)
-	desc.Wrapping = fyne.TextWrapOff
-	desc.Truncation = fyne.TextTruncateEllipsis
+	desc.Wrapping = fyne.TextWrapWord
+	statusGlyph := widget.NewIcon(lucide(statusIcon(r.status)))
 	meta := widget.NewLabelWithStyle(versionLine(r), fyne.TextAlignLeading, fyne.TextStyle{})
 
-	// Install/Update is the primary (accent) action; Open is flat/secondary.
+	// Primary Install/Update + (when installed) Open, grouped and top-right of the
+	// row — on the same line as the title, so they never read as "between" the
+	// title and the description.
 	btn := widget.NewButtonWithIcon(actionButtonLabel(r.status), lucide(luPrimaryIcon(r.status)), func() {
 		if r.status == fleet.NotInstalled || r.status == fleet.UpgradeAvailable {
 			c.goInstall(r)
@@ -345,24 +347,21 @@ func (c *Controller) buildRow(r *row) fyne.CanvasObject {
 	if r.status == fleet.UpToDate {
 		btn.Disable()
 	}
-
-	// Row content: icon on the left, info filling the middle, actions on the
-	// right {"Install/Update" + "Open" when installed} — all vertically centered.
-	// A state glyph sits beside the version line for at-a-glance recognition.
-	statusBadge := widget.NewIcon(lucide(statusIcon(r.status)))
-	metaRow := container.NewHBox(statusBadge, meta)
-	info := container.NewVBox(title, desc, metaRow)
-	inner := container.NewBorder(nil, nil, iconObj, nil, container.NewPadded(info))
+	var topActions fyne.CanvasObject
 	if r.status == fleet.NotInstalled {
-		actions := container.NewCenter(container.NewVBox(btn))
-		body := container.NewBorder(nil, nil, nil, actions, inner)
-		return container.NewPadded(body)
+		topActions = container.NewHBox(btn)
+	} else {
+		openBtn := widget.NewButtonWithIcon("Open", lucide("external-link"), func() { c.openApp(r) })
+		openBtn.Importance = widget.LowImportance
+		topActions = container.NewHBox(btn, openBtn)
 	}
-	openBtn := widget.NewButtonWithIcon("Open", lucide("external-link"), func() { openURLged(r.app.Homepage) })
-	openBtn.Importance = widget.LowImportance
-	actions := container.NewCenter(container.NewVBox(btn, openBtn))
-	body := container.NewBorder(nil, nil, nil, actions, inner)
-	return container.NewPadded(body)
+	actions := container.NewCenter(topActions)
+
+	// Layout: [icon] | title ...... [Open/Update] | and beneath: version·size, description.
+	topRow := container.NewBorder(nil, nil, nil, actions, title)
+	info := container.NewVBox(topRow, container.NewHBox(statusGlyph, meta), desc)
+	inner := container.NewBorder(nil, nil, iconObj, nil, container.NewPadded(info))
+	return container.NewPadded(inner)
 }
 
 // versionLine renders the muted subtitle under each app, following Gear Lever's
@@ -419,6 +418,26 @@ func (c *Controller) emptyState() fyne.CanvasObject {
 		title,
 		hint,
 	))
+}
+
+// openApp opens an installed web app in the browser. It first ensures the app's
+// dashboard daemon is running (the fleet's `binary start` self-daemonizes and is
+// idempotent), then opens its local dashboard URL (open_url).
+func (c *Controller) openApp(r *row) {
+	if r.app == nil {
+		return
+	}
+	target := r.app.OpenURL
+	if target == "" {
+		target = r.app.Homepage
+	}
+	go func() {
+		if r.app.Daemon != nil && r.app.Daemon.HasDaemon && len(r.app.Daemon.StartArgs) > 0 {
+			bin := c.st.Destination(r.ma)
+			c.engine.Exec.Run(context.Background(), bin, r.app.Daemon.StartArgs...)
+		}
+	}()
+	openURLged(target)
 }
 
 func (c *Controller) goInstall(r *row) {
