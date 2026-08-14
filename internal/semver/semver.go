@@ -5,9 +5,25 @@ package semver
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 )
+
+// versionRe lexes the first semver-looking triple from arbitrary CLI output
+// (e.g. "pharos version v0.9.3" → "v0.9.3").
+var versionRe = regexp.MustCompile(`v?(\d+)\.(\d+)\.(\d+)`)
+
+// Extract lexes a semver triple from arbitrary CLI output, reporting whether
+// one was found. The returned string is normalized to the "vX.Y.Z" form that
+// Parse accepts (e.g. "pharos version v0.9.3" → "v0.9.3", true).
+func Extract(s string) (string, bool) {
+	m := versionRe.FindStringSubmatch(s)
+	if m == nil {
+		return "", false
+	}
+	return "v" + m[1] + "." + m[2] + "." + m[3], true
+}
 
 // Version is a parsed semver triple plus an optional pre-release suffix.
 type Version struct {

@@ -8,13 +8,13 @@ import (
 	"os"
 	osexec "os/exec"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strings"
 
 	"github.com/udit-001/dock/internal/catalog"
 	"github.com/udit-001/dock/internal/exec"
 	"github.com/udit-001/dock/internal/fleet"
+	"github.com/udit-001/dock/internal/semver"
 )
 
 // BinRoot returns the OS-standard user bin directory the manager installs
@@ -136,34 +136,25 @@ func isFile(p string) bool {
 	return err == nil && !fi.IsDir()
 }
 
-var versionRe = regexp.MustCompile(`v?(\d+)\.(\d+)\.(\d+)`)
-
 // InstalledVersion detects the installed version of a manifest app by running
 // "<binary> version" (or --version) at its installed location (managed bin root,
-// Go toolchain bin, or PATH). Returns "" if not installed, or fleet.VersionUnknown
-// when the binary is present but its version string can't be parsed (so Decide
-// never falls back to "Not installed → Install").
-func (m *Manager) InstalledVersion(ctx context.Context, ma catalog.ManifestApp) string {
+// Go toolchain bin, or PATH). Returns (NotInstalled, "") when the binary isn't
+// present, (Installed, "vX.Y.Z") when its version is lexable, and
+// (VersionUnknown, "") when present but unparseable (so Decide never falls back
+// to "Not installed → Install").
+func (m *Manager) InstalledVersion(ctx context.Context, ma catalog.ManifestApp) (fleet.InstalledState, string) {
 	path, ok := m.Search(ma)
 	if !ok {
-		return ""
+		return fleet.StateNotInstalled, ""
 	}
 	out, _ := m.Exec.Run(ctx, path, "version")
 	if out == "" {
 		out, _ = m.Exec.Run(ctx, path, "--version")
 	}
-	if v := extractVersion(out); v != "" {
-		return v
+	if v, ok := semver.Extract(out); ok {
+		return fleet.StateInstalled, v
 	}
-	return fleet.VersionUnknown
-}
-
-// extractVersion pulls the first semver-looking triple from CLI output.
-func extractVersion(s string) string {
-	if m := versionRe.FindStringSubmatch(s); m != nil {
-		return "v" + m[1] + "." + m[2] + "." + m[3]
-	}
-	return ""
+	return fleet.StateVersionUnknown, ""
 }
 
 // AtomicSwap replaces dst with the fully-written src, keeping the previous

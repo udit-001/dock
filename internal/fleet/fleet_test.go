@@ -9,19 +9,20 @@ import (
 
 func TestDecide(t *testing.T) {
 	cases := []struct {
+		state             InstalledState
 		installed, latest string
 		want              Status
 	}{
-		{"", "v0.9.3", NotInstalled},
-		{"v0.9.3", "v0.9.3", UpToDate},
-		{"v0.9.2", "v0.9.3", UpgradeAvailable},
-		{"v1.0.0", "v0.9.3", UpToDate},
-		{"dev", "v0.9.3", UpgradeAvailable}, // old pseudo-version → update
-		{VersionUnknown, "v0.9.3", Unknown}, // present, unknown version
+		{StateNotInstalled, "", "v0.9.3", NotInstalled},
+		{StateInstalled, "v0.9.3", "v0.9.3", UpToDate},
+		{StateInstalled, "v0.9.2", "v0.9.3", UpgradeAvailable},
+		{StateInstalled, "v1.0.0", "v0.9.3", UpToDate},
+		{StateInstalled, "dev", "v0.9.3", UpgradeAvailable}, // old pseudo-version → update
+		{StateVersionUnknown, "", "v0.9.3", Unknown},        // present, unknown version
 	}
 	for _, c := range cases {
-		if got := Decide(c.installed, c.latest); got != c.want {
-			t.Errorf("Decide(%q,%q)=%v want %v", c.installed, c.latest, got, c.want)
+		if got := Decide(c.state, c.installed, c.latest); got != c.want {
+			t.Errorf("Decide(%v,%q,%q)=%v want %v", c.state, c.installed, c.latest, got, c.want)
 		}
 	}
 }

@@ -259,12 +259,12 @@ func (c *Controller) rowsFromStore(st *catalog.Store) []*row {
 	for i := range st.Apps {
 		a := &st.Apps[i]
 		ma := catalog.ManifestApp{ID: a.ID, Binary: a.Binary, DisplayName: a.DisplayName}
-		installed := c.st.InstalledVersion(context.Background(), ma)
+		state, installed := c.st.InstalledVersion(context.Background(), ma)
 		rows = append(rows, &row{
 			ma:        ma,
 			app:       a,
 			installed: installed,
-			status:    fleet.Decide(installed, a.LatestVersion),
+			status:    fleet.Decide(state, installed, a.LatestVersion),
 		})
 	}
 	return rows
@@ -612,7 +612,8 @@ func (c *Controller) goUpdateAll() {
 			if r.app == nil {
 				continue
 			}
-			status := fleet.Decide(c.st.InstalledVersion(context.Background(), r.ma), r.app.LatestVersion)
+			state, installed := c.st.InstalledVersion(context.Background(), r.ma)
+			status := fleet.Decide(state, installed, r.app.LatestVersion)
 			if status == fleet.NotInstalled || status == fleet.UpgradeAvailable || status == fleet.Unknown {
 				c.setStatusOnGoroutine(fmt.Sprintf("Updating %s…", r.app.DisplayName))
 				if err := c.engine.Install(context.Background(), r.ma, r.app, nil); err != nil {

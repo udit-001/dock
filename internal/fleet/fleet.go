@@ -20,10 +20,22 @@ const (
 	Unknown
 )
 
-// VersionUnknown is the sentinel store.InstalledVersion returns when a binary
-// is present but its version string can't be parsed — we know it's installed,
-// just not which version. Decide maps it to Unknown (never "Install").
-const VersionUnknown = "installed"
+// InstalledState is the typed outcome of probing for an installed binary —
+// the compiler-enforced handshake between store and fleet (no magic string).
+// Names are prefixed "State" so they don't collide with the Status enum's
+// NotInstalled in the same package.
+type InstalledState int
+
+const (
+	// StateNotInstalled means no binary was found.
+	StateNotInstalled InstalledState = iota
+	// StateInstalled means a binary was found with a parseable version.
+	StateInstalled
+	// StateVersionUnknown means a binary was found but its version string
+	// couldn't be lexed — we know it's present, just not which version. Decide
+	// maps it to Unknown (never "Install").
+	StateVersionUnknown
+)
 
 func (s Status) String() string {
 	switch s {
@@ -49,13 +61,14 @@ func SelectAsset(assets map[string]catalog.Asset) (catalog.Asset, bool) {
 	return a, ok
 }
 
-// Decide computes the status of an app given its detected installed version
-// ("" means not installed) and its latest version from upstream.
-func Decide(installed, latest string) Status {
-	if installed == "" {
+// Decide computes the status of an app given its typed install state, the
+// detected installed version ("" when not installed or unparseable), and its
+// latest version from upstream.
+func Decide(state InstalledState, installed, latest string) Status {
+	switch state {
+	case StateNotInstalled:
 		return NotInstalled
-	}
-	if installed == VersionUnknown {
+	case StateVersionUnknown:
 		return Unknown // present but version unknown → never show "Install"
 	}
 	lv, err := semver.Parse(latest)

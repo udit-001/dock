@@ -35,9 +35,9 @@ func TestExtractTarGz(t *testing.T) {
 	dir := t.TempDir()
 	src := filepath.Join(dir, "a.tar.gz")
 	writeTarGz(t, src, map[string]string{
-		"README.md":    "docs",
-		"harbor":       "BIN",
-		"docs/cli.md":  "x",
+		"README.md":   "docs",
+		"harbor":      "BIN",
+		"docs/cli.md": "x",
 	})
 	got, err := Extract(src, filepath.Join(dir, "x"), "harbor")
 	if err != nil {

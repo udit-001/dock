@@ -36,11 +36,15 @@ func newTestController(t *testing.T) *Controller {
 }
 
 func mkApp(installed, latest, name string) *row {
+	state := fleet.StateInstalled
+	if installed == "" {
+		state = fleet.StateNotInstalled
+	}
 	return &row{
 		ma:        catalog.ManifestApp{ID: name, Binary: name, DisplayName: name},
 		app:       &catalog.App{DisplayName: name, Description: "A test app", Homepage: "https://github.com/x/" + name, LatestVersion: latest},
 		installed: installed,
-		status:    fleet.Decide(installed, latest),
+		status:    fleet.Decide(state, installed, latest),
 	}
 }
 

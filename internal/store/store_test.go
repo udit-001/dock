@@ -12,20 +12,6 @@ import (
 	"github.com/udit-001/dock/internal/fleet"
 )
 
-func TestExtractVersion(t *testing.T) {
-	cases := []struct{ in, want string }{
-		{"pharos version v0.9.3", "v0.9.3"},
-		{"v0.9.3", "v0.9.3"},
-		{"dev build", ""},
-		{"", ""},
-	}
-	for _, c := range cases {
-		if got := extractVersion(c.in); got != c.want {
-			t.Errorf("extractVersion(%q)=%q want %q", c.in, got, c.want)
-		}
-	}
-}
-
 func TestInstalledVersion(t *testing.T) {
 	root := t.TempDir()
 	m, err := New(root, exec.StaticExecutor{Out: "waypoint version v0.12.0"})
@@ -35,8 +21,8 @@ func TestInstalledVersion(t *testing.T) {
 	m.ScanSystem = false
 	ma := catalog.ManifestApp{ID: "waypoint", Binary: "waypoint"}
 	// not installed yet
-	if got := m.InstalledVersion(context.Background(), ma); got != "" {
-		t.Fatalf("expected '' when not installed, got %q", got)
+	if state, got := m.InstalledVersion(context.Background(), ma); state != fleet.StateNotInstalled || got != "" {
+		t.Fatalf("expected (NotInstalled, '') when not installed, got (%v, %q)", state, got)
 	}
 	// fake an installed binary path
 	path := m.BinaryPath(ma)
@@ -46,8 +32,8 @@ func TestInstalledVersion(t *testing.T) {
 	if err := os.WriteFile(path, []byte("x"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if got := m.InstalledVersion(context.Background(), ma); got != "v0.12.0" {
-		t.Fatalf("InstalledVersion=%q want v0.12.0", got)
+	if state, got := m.InstalledVersion(context.Background(), ma); state != fleet.StateInstalled || got != "v0.12.0" {
+		t.Fatalf("InstalledVersion=%v,%q want (Installed, v0.12.0)", state, got)
 	}
 }
 
@@ -66,11 +52,11 @@ func TestInstalledVersionUnparseableIsInstalled(t *testing.T) {
 	if err := os.WriteFile(m.BinaryPath(ma), []byte("x"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	got := m.InstalledVersion(context.Background(), ma)
-	if got != fleet.VersionUnknown {
-		t.Fatalf("InstalledVersion=%q want VersionUnknown(%q)", got, fleet.VersionUnknown)
+	state, got := m.InstalledVersion(context.Background(), ma)
+	if state != fleet.StateVersionUnknown || got != "" {
+		t.Fatalf("InstalledVersion=%v,%q want (VersionUnknown, '')", state, got)
 	}
-	if fleet.Decide(got, "v0.9.3") != fleet.Unknown {
+	if fleet.Decide(state, got, "v0.9.3") != fleet.Unknown {
 		t.Fatal("present-but-unparseable must be Unknown version, not Not installed")
 	}
 }
@@ -88,8 +74,8 @@ func TestInstalledVersionInGoBin(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(alt, "harbor"), []byte("x"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if got := m.InstalledVersion(context.Background(), ma); got != "v0.2.0" {
-		t.Fatalf("InstalledVersion(in go bin)=%q want v0.2.0", got)
+	if state, got := m.InstalledVersion(context.Background(), ma); state != fleet.StateInstalled || got != "v0.2.0" {
+		t.Fatalf("InstalledVersion(in go bin)=%v,%q want (Installed, v0.2.0)", state, got)
 	}
 	// Destination should point at the detected Go-bin location, not the managed root.
 	dst := m.Destination(ma)

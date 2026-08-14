@@ -2,6 +2,26 @@ package semver
 
 import "testing"
 
+func TestExtract(t *testing.T) {
+	cases := []struct {
+		in   string
+		want string
+		ok   bool
+	}{
+		{"pharos version v0.9.3", "v0.9.3", true},
+		{"v0.9.3", "v0.9.3", true},
+		{"waypoint version v0.12.0", "v0.12.0", true},
+		{"dev build", "", false},
+		{"", "", false},
+	}
+	for _, c := range cases {
+		got, ok := Extract(c.in)
+		if ok != c.ok || got != c.want {
+			t.Errorf("Extract(%q)=%q,%v want %q,%v", c.in, got, ok, c.want, c.ok)
+		}
+	}
+}
+
 func TestCompare(t *testing.T) {
 	cases := []struct {
 		a, b string
