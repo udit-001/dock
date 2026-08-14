@@ -66,6 +66,24 @@ func (l *Loader) Load(ctx context.Context) (Result, error) {
 	}, nil
 }
 
+// FromFile builds rows from a snapshot file on disk — the deterministic source
+// for the -shot/-inspect design tooling (the repo-root apps.json). Errors when
+// the file is absent or unparseable.
+func (l *Loader) FromFile(path string) (Result, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return Result{}, err
+	}
+	var st catalog.Store
+	if err := json.Unmarshal(data, &st); err != nil {
+		return Result{}, err
+	}
+	return Result{
+		Rows:        l.rowsFromStore(context.Background(), &st),
+		GeneratedAt: st.GeneratedAt,
+	}, nil
+}
+
 // loadStore returns the snapshot, preferring the fresh jsDelivr copy (written
 // through to the cache), then the cached copy on failure.
 func (l *Loader) loadStore(ctx context.Context) (*catalog.Store, bool, error) {

@@ -12,6 +12,7 @@ import (
 	"github.com/udit-001/dock/internal/catalog"
 	"github.com/udit-001/dock/internal/exec"
 	"github.com/udit-001/dock/internal/fleet"
+	"github.com/udit-001/dock/internal/snapshot"
 	"github.com/udit-001/dock/internal/store"
 )
 
@@ -26,7 +27,7 @@ func newTestController(t *testing.T) *Controller {
 	m.ScanSystem = false
 	c := &Controller{
 		st:        m,
-		man:       &catalog.Manifest{},
+		loader:    &snapshot.Loader{St: m, Man: &catalog.Manifest{}},
 		statusLbl: widget.NewLabel(""),
 		errLbl:    widget.NewLabel(""),
 		actionLbl: widget.NewLabel(""),
@@ -35,16 +36,16 @@ func newTestController(t *testing.T) *Controller {
 	return c
 }
 
-func mkApp(installed, latest, name string) *row {
+func mkApp(installed, latest, name string) snapshot.Row {
 	state := fleet.StateInstalled
 	if installed == "" {
 		state = fleet.StateNotInstalled
 	}
-	return &row{
-		ma:        catalog.ManifestApp{ID: name, Binary: name, DisplayName: name},
-		app:       &catalog.App{DisplayName: name, Description: "A test app", Homepage: "https://github.com/x/" + name, LatestVersion: latest},
-		installed: installed,
-		status:    fleet.Decide(state, installed, latest),
+	return snapshot.Row{
+		Manifest:  catalog.ManifestApp{ID: name, Binary: name, DisplayName: name},
+		App:       catalog.App{DisplayName: name, Description: "A test app", Homepage: "https://github.com/x/" + name, LatestVersion: latest},
+		Installed: installed,
+		Status:    fleet.Decide(state, installed, latest),
 	}
 }
 
@@ -75,7 +76,7 @@ func TestCardInstalledShowsOpen(t *testing.T) {
 
 func TestUpdateAllHiddenWhenNothingPending(t *testing.T) {
 	c := newTestController(t)
-	c.rows = []*row{
+	c.rows = []snapshot.Row{
 		mkApp("v0.9.3", "v0.9.3", "pharos"),
 		mkApp("v0.2.0", "v0.2.0", "harbor"),
 	}
@@ -90,7 +91,7 @@ func TestUpdateAllHiddenWhenNothingPending(t *testing.T) {
 
 func TestUpdateAllShownWhenPending(t *testing.T) {
 	c := newTestController(t)
-	c.rows = []*row{
+	c.rows = []snapshot.Row{
 		mkApp("v0.9.3", "v0.9.3", "pharos"),
 		mkApp("", "v0.2.0", "harbor"), // not installed
 	}
@@ -114,14 +115,14 @@ func TestEmptyStateShownWhenNoRows(t *testing.T) {
 }
 
 func TestTitleShowsVersionInline(t *testing.T) {
-	app := &catalog.App{DisplayName: "pharos", LatestVersion: "v0.9.3"}
-	r := &row{installed: "v0.9.3", status: fleet.UpToDate, app: app}
+	app := catalog.App{DisplayName: "pharos", LatestVersion: "v0.9.3"}
+	r := snapshot.Row{Installed: "v0.9.3", Status: fleet.UpToDate, App: app}
 	if got := titleVersion(r); got != "(v0.9.3)" {
 		t.Errorf(`titleVersion should give "(v0.9.3)", got %q`, got)
 	}
-	noApp := &row{status: fleet.UpToDate, app: nil}
+	noApp := snapshot.Row{Status: fleet.UpToDate}
 	if got := titleVersion(noApp); got != "" {
-		t.Errorf("titleVersion with nil app should be empty, got %q", got)
+		t.Errorf("titleVersion with empty app should be empty, got %q", got)
 	}
 }
 

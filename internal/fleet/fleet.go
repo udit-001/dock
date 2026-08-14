@@ -50,6 +50,16 @@ func (s Status) String() string {
 	}
 }
 
+// NeedsAction reports whether a row has work for "Update all": a fresh
+// install, an available upgrade, or an unknown installed version.
+func (s Status) NeedsAction() bool {
+	switch s {
+	case NotInstalled, UpgradeAvailable, Unknown:
+		return true
+	}
+	return false
+}
+
 // PlatformKey returns the current os/arch key used in apps.json assets.
 func PlatformKey() string {
 	return runtime.GOOS + "/" + runtime.GOARCH

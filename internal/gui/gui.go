@@ -5,7 +5,6 @@ package gui
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"image"
 	"image/color"
@@ -26,27 +25,19 @@ import (
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/udit-001/dock/internal/appdata"
-	"github.com/udit-001/dock/internal/catalog"
 	"github.com/udit-001/dock/internal/fleet"
+	"github.com/udit-001/dock/internal/snapshot"
 	"github.com/udit-001/dock/internal/store"
 	"github.com/udit-001/dock/internal/updater"
 )
-
-// row is one rendered app.
-type row struct {
-	ma        catalog.ManifestApp
-	app       *catalog.App
-	installed string
-	status    fleet.Status
-}
 
 // Controller wires the core to the window.
 type Controller struct {
 	a      fyne.App
 	win    fyne.Window
-	man    *catalog.Manifest
 	st     *store.Manager
 	engine *updater.Engine
+	loader *snapshot.Loader
 
 	listBox    *fyne.Container
 	scroll     *container.Scroll
@@ -58,7 +49,7 @@ type Controller struct {
 	errLbl     *widget.Label
 	progress   *widget.ProgressBar
 	actionLbl  *widget.Label
-	rows       []*row
+	rows       []snapshot.Row
 }
 
 // New builds a controller for the default manifest and managed root.
@@ -85,14 +76,14 @@ func New() (*Controller, error) {
 	actionLbl := widget.NewLabel("")
 	actionLbl.Hide()
 	return &Controller{
-		man:       man,
 		st:        st,
 		engine:    engine,
+		loader:    &snapshot.Loader{St: st, Man: man},
 		statusLbl: widget.NewLabelWithStyle("Ready", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		errLbl:    errLbl,
 		progress:  progress,
 		actionLbl: actionLbl,
-		rows:      []*row{},
+		rows:      []snapshot.Row{},
 	}, nil
 }
 
@@ -191,83 +182,43 @@ func (c *Controller) RenderPNG(out string) error {
 }
 
 // populate fills rows deterministically for the off-screen render tooling from
-// the embedded apps.json (real generated data, no network).
-func (c *Controller) populate() ([]*row, string) {
-	st, err := fixtureStore()
+// the repo-root apps.json (the checked-in generated snapshot, no network).
+func (c *Controller) populate() ([]snapshot.Row, string) {
+	res, err := c.loader.FromFile("apps.json")
 	if err != nil {
 		return nil, err.Error()
 	}
-	c.setUpdated(st.GeneratedAt)
-	return c.rowsFromStore(st), ""
+	c.setUpdated(res.GeneratedAt)
+	return res.Rows, ""
 }
 
-// loadSnapshot returns the fleet Store, preferring the fresh jsDelivr copy,
-// then the embedded fixture / on-disk apps.json. The message is non-empty when
-// we had to fall back (offline).
-func (c *Controller) loadSnapshot() (*catalog.Store, string) {
-	if st, err := c.fetchSnapshot(); err == nil {
-		return st, ""
+// goRefresh fetches metadata + installed versions and re-renders (async).
+// Single-flight: while one check is running, further calls are ignored so
+// concurrent fetches can't race on the final render.
+func (c *Controller) goRefresh() {
+	if c.checking {
+		return
 	}
-	if st, err := fixtureStore(); err == nil {
-		return st, "Offline — showing last known versions"
-	}
-	return nil, "No fleet metadata available"
-}
-
-// fetchSnapshot downloads apps.json from jsDelivr (the repo hosting the
-// manifest). The app never calls the GitHub API — the workflow-generated
-// snapshot is the only runtime source.
-func (c *Controller) fetchSnapshot() (*catalog.Store, error) {
-	url := fmt.Sprintf("https://cdn.jsdelivr.net/gh/%s@%s/apps.json", c.man.Repo, c.man.Branch)
-	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("jsDelivr: %s", resp.Status)
-	}
-	var st catalog.Store
-	if err := json.NewDecoder(resp.Body).Decode(&st); err != nil {
-		return nil, err
-	}
-	return &st, nil
-}
-
-// fixtureStore loads the embedded apps.json (the offline deterministic
-// snapshot), falling back to a repo-root apps.json on disk.
-func fixtureStore() (*catalog.Store, error) {
-	data, err := appdata.Fixture()
-	if err != nil {
-		data, err = os.ReadFile("apps.json")
-	}
-	if err != nil {
-		return nil, err
-	}
-	var st catalog.Store
-	if err := json.Unmarshal(data, &st); err != nil {
-		return nil, err
-	}
-	return &st, nil
-}
-
-// rowsFromStore maps a snapshot's apps to rows (installed-version detection +
-// status decision).
-func (c *Controller) rowsFromStore(st *catalog.Store) []*row {
-	rows := make([]*row, 0, len(st.Apps))
-	for i := range st.Apps {
-		a := &st.Apps[i]
-		ma := catalog.ManifestApp{ID: a.ID, Binary: a.Binary, DisplayName: a.DisplayName}
-		state, installed := c.st.InstalledVersion(context.Background(), ma)
-		rows = append(rows, &row{
-			ma:        ma,
-			app:       a,
-			installed: installed,
-			status:    fleet.Decide(state, installed, a.LatestVersion),
+	c.checking = true
+	c.setChecking(true)
+	go func() {
+		res, err := c.loader.Load(context.Background())
+		msg := ""
+		if err != nil {
+			msg = err.Error()
+		} else if res.Offline {
+			msg = "Offline — showing last known versions"
+		}
+		fyne.Do(func() {
+			c.checking = false
+			c.setChecking(false)
+			c.rows = res.Rows
+			c.setUpdated(res.GeneratedAt)
+			c.render()
+			c.setStatus("")
+			c.showStatusLine(msg)
 		})
-	}
-	return rows
+	}()
 }
 
 // setUpdated shows (or hides) the "Updated <time>" freshness line.
@@ -300,28 +251,6 @@ func (c *Controller) Run() {
 // Capture is intentionally omitted — the UI is viewed by running the real app
 // (make run). Off-screen rendering is not shown to the user.
 
-// goRefresh fetches metadata + installed versions and re-renders (async).
-// Single-flight: while one check is running, further calls are ignored so
-// concurrent fetches can't race on the final render.
-func (c *Controller) goRefresh() {
-	if c.checking {
-		return
-	}
-	c.checking = true
-	c.setChecking(true)
-	go func() {
-		rows, firstErr := c.collect()
-		fyne.Do(func() {
-			c.checking = false
-			c.setChecking(false)
-			c.rows = rows
-			c.render()
-			c.setStatus("")
-			c.showStatusLine(firstErr)
-		})
-	}()
-}
-
 // setChecking flips the "Check for updates" button into its busy state: same
 // button + refresh icon, disabled, labelled "Checking…". Only called from the
 // main thread (button click, startup, or inside a fyne.Do block).
@@ -336,18 +265,6 @@ func (c *Controller) setChecking(on bool) {
 		c.checkBtn.SetText("Check for updates")
 		c.checkBtn.Enable()
 	}
-}
-
-// collect reads the fleet snapshot (jsDelivr, falling back to the embedded
-// fixture) and resolves installed versions into rows. It never calls the GitHub
-// API. The message is non-empty when the fresh snapshot was unreachable.
-func (c *Controller) collect() ([]*row, string) {
-	st, msg := c.loadSnapshot()
-	if st == nil {
-		return nil, msg
-	}
-	c.setUpdated(st.GeneratedAt)
-	return c.rowsFromStore(st), msg
 }
 
 // showStatusLine shows the one-line error/status label only when there is a
@@ -399,15 +316,15 @@ func (c *Controller) render() {
 // or an available upgrade).
 func (c *Controller) hasPending() bool {
 	for _, r := range c.rows {
-		if r.status == fleet.NotInstalled || r.status == fleet.UpgradeAvailable || r.status == fleet.Unknown {
+		if r.Status.NeedsAction() {
 			return true
 		}
 	}
 	return false
 }
 
-func (c *Controller) buildRow(r *row) fyne.CanvasObject {
-	title := widget.NewLabelWithStyle(r.app.DisplayName, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+func (c *Controller) buildRow(r snapshot.Row) fyne.CanvasObject {
+	title := widget.NewLabelWithStyle(r.App.DisplayName, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
 	// Version shown inline next to the title, in brackets and subdued (the row's
 	// lowest visual tier) so "Name (v1.2.3)" reads at a glance. No status glyph:
 	// the action buttons (Install/Update/Launch) already convey install state.
@@ -416,22 +333,22 @@ func (c *Controller) buildRow(r *row) fyne.CanvasObject {
 
 	// Single-line description, truncated at whatever fits the row width (with an
 	// ellipsis) so rows stay uniform regardless of how long the summary is.
-	desc := widget.NewLabel(r.app.Description)
+	desc := widget.NewLabel(r.App.Description)
 	desc.Truncation = fyne.TextTruncateClip
 
 	// Action column, stacked vertically: Install/Update only when relevant, Launch
 	// only when installed. Centered so the button aligns to the row middle.
 	var col []fyne.CanvasObject
-	if r.status != fleet.UpToDate {
-		btn := widget.NewButtonWithIcon(actionButtonLabel(r.status), lucide(luPrimaryIcon(r.status)), func() {
-			if r.status == fleet.NotInstalled || r.status == fleet.UpgradeAvailable || r.status == fleet.Unknown {
+	if r.Status != fleet.UpToDate {
+		btn := widget.NewButtonWithIcon(actionButtonLabel(r.Status), lucide(luPrimaryIcon(r.Status)), func() {
+			if r.Status.NeedsAction() {
 				c.goInstall(r)
 			}
 		})
 		btn.Importance = widget.HighImportance
 		col = append(col, btn)
 	}
-	if r.status != fleet.NotInstalled {
+	if r.Status != fleet.NotInstalled {
 		launchBtn := widget.NewButton("Launch", func() { c.openApp(r) })
 		launchBtn.Importance = widget.MediumImportance
 		col = append(col, launchBtn)
@@ -450,14 +367,14 @@ func (c *Controller) buildRow(r *row) fyne.CanvasObject {
 
 // iconTile renders the app icon on a consistent rounded tile so icons with
 // different built-in backgrounds read as a uniform rail across rows.
-func iconTile(r *row) fyne.CanvasObject {
+func iconTile(r snapshot.Row) fyne.CanvasObject {
 	// Transparent well: reserves a fixed 48px square so rows stay aligned, but
 	// draws no background fill over the card surface.
 	surf := canvas.NewRectangle(color.Transparent)
 	surf.SetMinSize(fyne.NewSize(tileSize(), tileSize()))
 	var img fyne.CanvasObject
-	if b, ok := appdata.Icon(r.ma.ID); ok && len(b) > 0 {
-		im := canvas.NewImageFromResource(fyne.NewStaticResource("icon_"+r.ma.ID+".png", b))
+	if b, ok := appdata.Icon(r.Manifest.ID); ok && len(b) > 0 {
+		im := canvas.NewImageFromResource(fyne.NewStaticResource("icon_"+r.Manifest.ID+".png", b))
 		im.FillMode = canvas.ImageFillContain
 		im.SetMinSize(fyne.NewSize(tileSize()-12, tileSize()-12))
 		img = container.NewCenter(im)
@@ -502,14 +419,14 @@ func mutedTextColor() color.Color {
 // titleVersion renders the version shown inline next to the app title, in
 // brackets and muted: "Name (v1.2.3)". Uses the latest release version; for a
 // not-installed app we still show it (that's what "Install" would pull).
-func titleVersion(r *row) string {
-	if r.status == fleet.Unknown {
+func titleVersion(r snapshot.Row) string {
+	if r.Status == fleet.Unknown {
 		return "(version unknown)"
 	}
-	if r.app == nil || r.app.LatestVersion == "" {
+	if r.App.LatestVersion == "" {
 		return ""
 	}
-	return "(" + r.app.LatestVersion + ")"
+	return "(" + r.App.LatestVersion + ")"
 }
 
 // emptyState is the centered placeholder shown when the fleet is empty, mirroring
@@ -531,20 +448,17 @@ func (c *Controller) emptyState() fyne.CanvasObject {
 // backgrounds the server (it does NOT auto-launch the browser). So Open starts
 // the dashboard if needed, waits until it accepts connections, then opens the
 // browser to the local open_url.
-func (c *Controller) openApp(r *row) {
-	if r.app == nil {
-		return
-	}
-	target := r.app.OpenURL
+func (c *Controller) openApp(r snapshot.Row) {
+	target := r.App.OpenURL
 	if target == "" {
-		target = r.app.Homepage
+		target = r.App.Homepage
 		openURLged(target)
 		return
 	}
 	go func() {
-		if r.app.Daemon != nil && r.app.Daemon.HasDaemon && len(r.app.Daemon.StartArgs) > 0 {
-			bin := c.st.Destination(r.ma)
-			c.engine.Exec.Run(context.Background(), bin, r.app.Daemon.StartArgs...)
+		if r.App.Daemon != nil && r.App.Daemon.HasDaemon && len(r.App.Daemon.StartArgs) > 0 {
+			bin := c.st.Destination(r.Manifest)
+			c.engine.Exec.Run(context.Background(), bin, r.App.Daemon.StartArgs...)
 		}
 		// The daemon binds asynchronously; wait for it, then hand off to a
 		// standalone browser window (falls back to the default browser tab).
@@ -575,8 +489,8 @@ func (c *Controller) setStatusOnGoroutine(s string) {
 }
 
 // goInstall wires an install/update and its progress to the UI (async).
-func (c *Controller) goInstall(r *row) {
-	c.setStatus(fmt.Sprintf("Installing %s…", r.app.DisplayName))
+func (c *Controller) goInstall(r snapshot.Row) {
+	c.setStatus(fmt.Sprintf("Installing %s…", r.App.DisplayName))
 	c.errLbl.SetText("")
 	go func() {
 		progress := func(done, total int64) {
@@ -587,16 +501,16 @@ func (c *Controller) goInstall(r *row) {
 			fyne.Do(func() {
 				c.progress.Show()
 				c.progress.SetValue(p)
-				c.actionLbl.SetText(fmt.Sprintf("Downloading %s…", r.ma.Binary))
+				c.actionLbl.SetText(fmt.Sprintf("Downloading %s…", r.Manifest.Binary))
 			})
 		}
-		err := c.engine.Install(context.Background(), r.ma, r.app, progress)
+		err := c.engine.Install(context.Background(), r.Manifest, &r.App, progress)
 		fyne.Do(func() {
 			c.progress.Hide()
 			c.progress.SetValue(0)
 			c.actionLbl.SetText("")
 			if err != nil {
-				c.errLbl.SetText(fmt.Sprintf("%s: %v", r.app.DisplayName, err))
+				c.errLbl.SetText(fmt.Sprintf("%s: %v", r.App.DisplayName, err))
 			}
 			c.setStatus("")
 			c.goRefresh()
@@ -609,15 +523,10 @@ func (c *Controller) goUpdateAll() {
 	c.errLbl.SetText("")
 	go func() {
 		for _, r := range c.rows {
-			if r.app == nil {
-				continue
-			}
-			state, installed := c.st.InstalledVersion(context.Background(), r.ma)
-			status := fleet.Decide(state, installed, r.app.LatestVersion)
-			if status == fleet.NotInstalled || status == fleet.UpgradeAvailable || status == fleet.Unknown {
-				c.setStatusOnGoroutine(fmt.Sprintf("Updating %s…", r.app.DisplayName))
-				if err := c.engine.Install(context.Background(), r.ma, r.app, nil); err != nil {
-					fyne.Do(func() { c.errLbl.SetText(fmt.Sprintf("update %s: %v", r.app.DisplayName, err)) })
+			if r.Status.NeedsAction() {
+				c.setStatusOnGoroutine(fmt.Sprintf("Updating %s…", r.App.DisplayName))
+				if err := c.engine.Install(context.Background(), r.Manifest, &r.App, nil); err != nil {
+					fyne.Do(func() { c.errLbl.SetText(fmt.Sprintf("update %s: %v", r.App.DisplayName, err)) })
 				}
 			}
 		}
