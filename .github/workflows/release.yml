@@ -53,7 +53,7 @@ jobs:
       # Build cache: Fyne/GLFW CGO compile is the slowest step; reusing it
       # across runs skips recompiling ~50 packages. Go's cache self-validates
       # content hashes, so a stale entry just triggers a rebuild.
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: ${{ runner.os == 'Windows' && 'C:\Users\runneradmin\AppData\Local\go-build' || '~/.cache/go-build' }}
           key: go-build-${{ runner.os }}
