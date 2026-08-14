@@ -8,3 +8,5 @@ bin/
 winres/winres.json
 coverage.out
 screenshots/
+
+docs/

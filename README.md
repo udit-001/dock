@@ -38,6 +38,4 @@ make gen      # regenerate apps.json from the manifest
 
 Built per-OS with CGO on tag push (`git tag v0.x.x && git push --tags`). Windows: `go install`; Linux/macOS: tar.gz archives with `checksums.txt`.
 
-## Docs
 
-[Spec](docs/spec.md)
