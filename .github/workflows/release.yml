@@ -36,18 +36,31 @@ jobs:
             goos: windows
             goarch: amd64
             ext: .exe
-            deps: choco install mingw --yes --no-progress
+            # Preinstalled MSYS2 MinGW (C:\msys64\mingw64\bin\gcc.exe) — no choco
+            # install needed. Appended to PATH for the Build step.
+            deps: echo 'C:\msys64\mingw64\bin' >> "$GITHUB_PATH"
 
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
 
+      # Module cache: reuses downloaded Go modules across runs.
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
+          cache: true
+
+      # Build cache: Fyne/GLFW CGO compile is the slowest step; reusing it
+      # across runs skips recompiling ~50 packages. Go's cache self-validates
+      # content hashes, so a stale entry just triggers a rebuild.
+      - uses: actions/cache@v4
+        with:
+          path: ${{ runner.os == 'Windows' && 'C:\Users\runneradmin\AppData\Local\go-build' || '~/.cache/go-build' }}
+          key: go-build-${{ runner.os }}
 
       - name: Install build deps
         if: matrix.deps != ''
+        shell: bash
         run: ${{ matrix.deps }}
 
       # Windows PE resource metadata (company/product/version/icon) so the .exe
