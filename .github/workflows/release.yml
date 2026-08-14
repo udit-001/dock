@@ -85,7 +85,9 @@ jobs:
           mkdir -p dist
           ARCHIVE="dock_${{ github.ref_name }}_${{ matrix.goos }}_${{ matrix.goarch }}.tar.gz"
           tar -czf "$ARCHIVE" dock${{ matrix.ext }} README.md
-          sha256sum "$ARCHIVE" > "dist/checksums_${{ matrix.goos }}_${{ matrix.goarch }}.txt"
+          # Normalize the binary-mode "*" marker MSYS sha256sum emits on Windows
+          # so checksums.txt uses a uniform "hash  file" format everywhere.
+          sha256sum "$ARCHIVE" | sed 's/^\([0-9a-f]*\)\*/\1  /' > "dist/checksums_${{ matrix.goos }}_${{ matrix.goarch }}.txt"
           mv "$ARCHIVE" dist/
 
       - uses: actions/upload-artifact@v7

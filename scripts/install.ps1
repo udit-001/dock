@@ -50,8 +50,12 @@ try {
     & curl.exe -fsSL "$downloadBase/$tag/checksums.txt" -o $checksums
     if ($LASTEXITCODE -ne 0) { throw 'Download failed: checksums.txt' }
 
-    $expected = (Get-Content $checksums | Where-Object { $_ -match " $asset$" } | Select-Object -First 1) -split '\s+' | Select-Object -First 1
-    if (-not $expected) { throw "No checksum entry for $asset" }
+    # checksums.txt is sha256sum output: "hash  file" (text mode) or
+    # "hash *file" (binary mode, MSYS/Git-Bash). Match the filename at end of
+    # line regardless of separator; the hash is always the first field.
+    $line = Get-Content $checksums | Where-Object { $_ -match ([regex]::Escape($asset) + '$') } | Select-Object -First 1
+    if (-not $line) { throw "No checksum entry for $asset" }
+    $expected = ($line -split '\s+')[0]
 
     $actual = (Get-FileHash -Algorithm SHA256 -Path $archive).Hash.ToLowerInvariant()
     if ($actual -ne $expected) {

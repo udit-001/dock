@@ -28,6 +28,10 @@ GOOS=""
 case "$(uname -s)" in
   Linux)  GOOS="linux" ;;
   Darwin) GOOS="darwin" ;;
+  MINGW*|MSYS*|CYGWIN*)
+    echo "error: you're on Windows - use the PowerShell installer instead:" >&2
+    echo "       powershell -ExecutionPolicy Bypass -Command \"irm https://raw.githubusercontent.com/${REPO}/main/scripts/install.ps1 | iex\"" >&2
+    exit 1 ;;
   *)      echo "error: unsupported OS '$(uname -s)'" >&2; exit 1 ;;
 esac
 
