@@ -84,6 +84,11 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      # gh release create --generate-notes needs a git repo + tag history.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
       - uses: actions/download-artifact@v8
         with:
           path: release
