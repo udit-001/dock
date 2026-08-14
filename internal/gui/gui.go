@@ -117,7 +117,8 @@ func (c *Controller) Run() {
 	c.win = c.a.NewWindow("App Store")
 	c.win.SetContent(c.content())
 	c.win.SetPadded(true)
-	c.win.Resize(fyne.NewSize(720, 600))
+	// Wider window gives app descriptions more room to breathe.
+	c.win.Resize(fyne.NewSize(980, 640))
 	c.goRefresh()
 	c.win.ShowAndRun()
 }
@@ -220,18 +221,19 @@ func (c *Controller) buildCard(r *row) *widget.Card {
 
 	// Row content: icon on the left, title/desc/status filling the middle.
 	info := container.NewVBox(title, desc, meta)
+	// Inner border puts the icon on the left and lets the description fill the
+	// remaining width (an HBox would keep text at min-size).
+	inner := container.NewBorder(nil, nil, ic, nil, container.NewPadded(info))
 	// Action buttons on the RIGHT edge so rows read left-to-right: icon, text,
 	// then Install/Open. Open is shown only when the app is installed.
 	if r.status == fleet.NotInstalled {
 		actions := container.NewVBox(btn)
-		body := container.NewBorder(nil, nil, nil, actions,
-			container.NewHBox(ic, container.NewPadded(info)))
+		body := container.NewBorder(nil, nil, nil, actions, inner)
 		return widget.NewCard("", "", body)
 	}
 	openBtn := widget.NewButton("Open", func() { openURLged(r.app.Homepage) })
 	actions := container.NewVBox(btn, openBtn)
-	body := container.NewBorder(nil, nil, nil, actions,
-		container.NewHBox(ic, container.NewPadded(info)))
+	body := container.NewBorder(nil, nil, nil, actions, inner)
 	return widget.NewCard("", "", body)
 }
 
