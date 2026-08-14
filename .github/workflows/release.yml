@@ -26,15 +26,10 @@ jobs:
             goos: linux
             goarch: amd64
             ext: ''
-            deps: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev xorg-dev libxxf86vm-dev
+            deps: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev xorg-dev libxxf86vm-dev libwayland-dev libxkbcommon-dev
           - os: macos-latest
             goos: darwin
             goarch: arm64
-            ext: ''
-            deps: ''
-          - os: macos-13
-            goos: darwin
-            goarch: amd64
             ext: ''
             deps: ''
           - os: windows-latest
@@ -63,6 +58,7 @@ jobs:
         run: ./scripts/gen-winres.sh "${{ github.ref_name }}"
 
       - name: Build
+        shell: bash
         env:
           CGO_ENABLED: '1'
         run: |
