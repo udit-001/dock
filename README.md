@@ -4,13 +4,32 @@ Desktop manager for a fleet of self-hosted Go apps (Pharos, Harbor, Waypoint). I
 
 ## Quick start
 
+Prebuilt binaries (no Go toolchain, no C compiler):
+
+Linux / macOS:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/udit-001/dock/main/scripts/install.sh | bash
+```
+
+Windows (PowerShell):
+
+```powershell
+powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/udit-001/dock/main/scripts/install.ps1 | iex"
+```
+
+Both installers download the latest tagged release, verify its sha256 against
+`checksums.txt`, and install the binary to a user-writable location (`~/.local/bin`
+on Unix, `%LOCALAPPDATA%\Programs\Dock` on Windows).
+
+Power users can still build from source:
+
 ```bash
 go install github.com/udit-001/dock@latest
 dock
 ```
 
-- **Windows** needs a Go toolchain with gcc (mingw-w64) — Fyne/GLFW requires CGO.
-- **Linux / macOS** can also download a binary from [Releases](https://github.com/udit-001/dock/releases).
+- **Windows**: `go install` needs a Go toolchain with gcc (mingw-w64) — Fyne/GLFW requires CGO; the prebuilt binary avoids this.
 
 ## How it works
 
