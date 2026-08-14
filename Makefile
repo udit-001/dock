@@ -17,12 +17,8 @@ VERSION_MAJOR := 0
 VERSION_MINOR := 0
 VERSION_PATCH := 1
 GIT_COMMIT   := $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
-BUILD_DATE   := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 
-LDFLAGS := -s -w \
-	-X github.com/udit-001/dock/internal/version.Version=$(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_PATCH) \
-	-X github.com/udit-001/dock/internal/version.Commit=$(GIT_COMMIT) \
-	-X github.com/udit-001/dock/internal/version.Date=$(BUILD_DATE)
+LDFLAGS := -s -w
 
 .PHONY: all deps build run test vet staticcheck check tidy gen install winres version inspect screenshot clean
 

@@ -37,19 +37,6 @@ const (
 	StateVersionUnknown
 )
 
-func (s Status) String() string {
-	switch s {
-	case UpToDate:
-		return "Up to date"
-	case UpgradeAvailable:
-		return "Update available"
-	case Unknown:
-		return "Version unknown"
-	default:
-		return "Not installed"
-	}
-}
-
 // NeedsAction reports whether a row has work for "Update all": a fresh
 // install, an available upgrade, or an unknown installed version.
 func (s Status) NeedsAction() bool {

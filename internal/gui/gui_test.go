@@ -129,10 +129,8 @@ func TestTitleShowsVersionInline(t *testing.T) {
 func TestStandaloneArgs(t *testing.T) {
 	url := "http://127.0.0.1:9090"
 	want := []string{"--app=" + url}
-	for _, bin := range []string{"/usr/bin/helium", "/usr/bin/google-chrome", "/usr/bin/chromium"} {
-		if got := standaloneArgs(url, bin); len(got) != 1 || got[0] != want[0] {
-			t.Errorf("standaloneArgs(%q) = %q, want %q", bin, got, want)
-		}
+	if got := standaloneArgs(url); len(got) != 1 || got[0] != want[0] {
+		t.Errorf("standaloneArgs(%q) = %q, want %q", url, got, want)
 	}
 }
 

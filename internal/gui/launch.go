@@ -30,7 +30,7 @@ func resolveStandalone() string {
 
 // standaloneArgs builds the CLI args that open url in a standalone window.
 // All candidates are Chromium-family and support --app=<url> (Helium included).
-func standaloneArgs(url, bin string) []string {
+func standaloneArgs(url string) []string {
 	return []string{"--app=" + url}
 }
 
@@ -41,7 +41,7 @@ func openStandalone(url string) bool {
 	if bin == "" {
 		return false
 	}
-	cmd := exec.Command(bin, standaloneArgs(url, bin)...)
+	cmd := exec.Command(bin, standaloneArgs(url)...)
 	if err := cmd.Start(); err != nil {
 		return false
 	}

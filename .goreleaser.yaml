@@ -1,6 +1,6 @@
 # GoReleaser config for the App Store manager.
-# Mirror of the managed fleet's release pipeline: winres PE metadata, ldflags
-# version injection, checksums.txt, cross-platform binaries.
+# Mirror of the managed fleet's release pipeline: winres PE metadata,
+# checksums.txt, cross-platform binaries.
 #
 # Local dry-run:   goreleaser release --snapshot --clean
 # Validate config: goreleaser check
@@ -35,9 +35,6 @@ builds:
       - -trimpath
     ldflags:
       - -s -w
-      - -X github.com/udit-001/app-store/internal/version.Version={{.Version}}
-      - -X github.com/udit-001/app-store/internal/version.Commit={{.Commit}}
-      - -X github.com/udit-001/app-store/internal/version.Date={{.Date}}
     mod_timestamp: '{{ .CommitTimestamp }}'
 
 archives:

@@ -30,18 +30,15 @@ type HTTPSrc interface {
 	Download(ctx context.Context, url, dest string, progress Progress) error
 }
 
-// HTTPDownloader implements HTTPSrc.
-type HTTPDownloader struct{ Client *http.Client }
+// HTTPDownloader implements HTTPSrc using the default HTTP client.
+type HTTPDownloader struct{}
 
 func (d HTTPDownloader) Download(ctx context.Context, url, dest string, progress Progress) error {
-	if d.Client == nil {
-		d.Client = http.DefaultClient
-	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return err
 	}
-	resp, err := d.Client.Do(req)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -125,8 +122,6 @@ type Engine struct {
 	// Stopper terminates a daemon by binary name when the app has no explicit
 	// stop command. Defaults to exec.ProcessStop. Tests inject a fake.
 	Stopper exec.Stopper
-	// WorkDir is a temp staging dir (defaults to os.TempDir()).
-	WorkDir string
 }
 
 func (e *Engine) stopper() exec.Stopper {
@@ -185,7 +180,7 @@ func (e *Engine) controlDaemon(ctx context.Context, ma catalog.ManifestApp, app 
 // downloadAndStage fetches the asset (converting archives to a single binary),
 // verifies its sha256, and returns the staged binary path + a cleanup func.
 func (e *Engine) downloadAndStage(ctx context.Context, ma catalog.ManifestApp, app *catalog.App, asset catalog.Asset, progress Progress) (string, func(), error) {
-	dir, err := os.MkdirTemp(e.WorkDir, "appstore-*")
+	dir, err := os.MkdirTemp("", "appstore-*")
 	if err != nil {
 		return "", func() {}, err
 	}
