@@ -22,6 +22,7 @@ import (
 	"fyne.io/fyne/v2/driver/software"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/test"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/udit-001/app-store/internal/appdata"
@@ -117,14 +118,17 @@ func (c *Controller) content() fyne.CanvasObject {
 		c.statusLbl,
 	)
 	header := container.NewVBox(top, c.progress, c.actionLbl, c.errLbl)
-	// Framed list: the whole list sits on ONE background (like Gear Lever's
-	// LibAdwaita ListBox), not per-row cards.
-	listFrame := widget.NewCard("", "", c.listBox)
-	scroll := container.NewVScroll(listFrame)
+	// Framed list: the whole list sits on a contrasting rounded panel (like Gear
+	// Lever's LibAdwaita ListBox) that stands out from the window background.
+	// The panel is a fixed surface; the rows scroll over it.
+	scroll := container.NewVScroll(c.listBox)
+	surface := canvas.NewRectangle(theme.InputBackgroundColor()) // nord1/nord5, contrasts with nord0/nord6
+	surface.CornerRadius = 6
+	panel := container.NewStack(surface, container.NewPadded(scroll))
 	// Breathing room: pad the header so there's a gap above it and between it
 	// and the list, while the Border keeps the list filling the remaining space.
 	headOuter := container.NewPadded(header)
-	body := container.NewBorder(headOuter, nil, nil, nil, scroll)
+	body := container.NewBorder(headOuter, nil, nil, nil, panel)
 	// Cap the column width and center it (Bootstrap-container feel) so the list
 	// doesn't sprawl across very wide windows.
 	return container.New(cappedLayout{Max: contentWidth()}, body)
