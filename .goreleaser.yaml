@@ -19,8 +19,12 @@ builds:
   - id: app-store
     main: ./cmd/app-store
     binary: app-store
+    # Fyne/GLFW needs CGO — CGO_ENABLED=0 cannot link a windowed binary.
+    # CI does NOT use this for cross-compiling: .github/workflows/release.yml
+    # builds natively per-OS with CGO enabled. This config is for a local
+    # snapshot on the host OS only (goreleaser release --snapshot --clean).
     env:
-      - CGO_ENABLED=0
+      - CGO_ENABLED=1
     goos:
       - linux
       - windows

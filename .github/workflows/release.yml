@@ -1,0 +1,105 @@
+# Release workflow — builds native, cgo-enabled binaries per OS (Fyne/GLFW
+# needs CGO, so we build on each OS's own runner rather than cross-compiling).
+# Triggered by `git tag v0.x.x && git push --tags`. Uploads tar.gz archives
+# + a merged checksums.txt to the GitHub release.
+#
+# Distribution model: Linux/macOS users download the binaries; Windows users
+# `go install github.com/udit-001/app-store@latest` (or download the .tar.gz).
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            ext: ''
+            deps: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev xorg-dev libxxf86vm-dev
+          - os: macos-latest
+            goos: darwin
+            goarch: arm64
+            ext: ''
+            deps: ''
+          - os: macos-13
+            goos: darwin
+            goarch: amd64
+            ext: ''
+            deps: ''
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+            ext: .exe
+            deps: choco install mingw --yes --no-progress
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install build deps
+        if: matrix.deps != ''
+        run: ${{ matrix.deps }}
+
+      # Windows PE resource metadata (company/product/version/icon) so the .exe
+      # carries legitimate metadata.
+      - name: Generate Windows resources
+        if: matrix.goos == 'windows'
+        shell: bash
+        run: ./scripts/gen-winres.sh "${{ github.ref_name }}"
+
+      - name: Build
+        env:
+          CGO_ENABLED: '1'
+        run: |
+          VER="$(echo "${{ github.ref_name }}" | sed 's/^v//')"
+          go build -trimpath -tags migrated_fynedo \
+            -ldflags "-s -w \
+              -X github.com/udit-001/app-store/internal/version.Version=${VER} \
+              -X github.com/udit-001/app-store/internal/version.Commit=${{ github.sha }} \
+              -X github.com/udit-001/app-store/internal/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            -o app-store${{ matrix.ext }} ./cmd/app-store
+
+      - name: Package
+        shell: bash
+        run: |
+          mkdir -p dist
+          ARCHIVE="app-store_${{ github.ref_name }}_${{ matrix.goos }}_${{ matrix.goarch }}.tar.gz"
+          tar -czf "$ARCHIVE" app-store${{ matrix.ext }} README.md
+          sha256sum "$ARCHIVE" > "dist/checksums_${{ matrix.goos }}_${{ matrix.goarch }}.txt"
+          mv "$ARCHIVE" dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/*
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release
+
+      - name: Create release + upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          find release -name 'checksums_*.txt' -exec cat {} \; | sort -k2 > checksums.txt
+          gh release create "${{ github.ref_name }}" --generate-notes 2>/dev/null || true
+          gh release upload "${{ github.ref_name }}" release/*/app-store_*.tar.gz checksums.txt --clobber

@@ -1,4 +1,4 @@
-# App Store — common tasks.
+# Dock — common tasks.
 # Note: Fyne/GLFW needs the unversioned X11 dev symlink (libXxf86vm.so) which
 # this machine lacks; `deps` creates a local one and sets CGO_LDFLAGS.
 
@@ -8,6 +8,11 @@ OUT     := $(BIN)/$(APP)
 LOCALLIB := $(HOME)/.local/lib
 export CGO_LDFLAGS = -L$(LOCALLIB)
 
+# Opt into Fyne's fyne.Do threading model so the driver's thread-safety
+# warnings don't print. All our goroutine UI updates already go through
+# fyne.Do, so this is safe and silences the "not been migrated" notice.
+TAGS     := migrated_fynedo
+
 VERSION_MAJOR := 0
 VERSION_MINOR := 0
 VERSION_PATCH := 1
@@ -15,9 +20,9 @@ GIT_COMMIT   := $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
 BUILD_DATE   := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 
 LDFLAGS := -s -w \
-	-X github.com/udit-001/app-store/internal/version.Version=$(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_PATCH) \
-	-X github.com/udit-001/app-store/internal/version.Commit=$(GIT_COMMIT) \
-	-X github.com/udit-001/app-store/internal/version.Date=$(BUILD_DATE)
+	-X github.com/udit-001/dock/internal/version.Version=$(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_PATCH) \
+	-X github.com/udit-001/dock/internal/version.Commit=$(GIT_COMMIT) \
+	-X github.com/udit-001/dock/internal/version.Date=$(BUILD_DATE)
 
 .PHONY: all deps build run test vet tidy gen install winres version inspect screenshot clean
 
@@ -31,7 +36,7 @@ deps:
 
 build: deps
 	@mkdir -p $(BIN)
-	go build -trimpath -ldflags "$(LDFLAGS)" -o $(OUT) ./cmd/$(APP)
+	go build -trimpath -tags $(TAGS) -ldflags "$(LDFLAGS)" -o $(OUT) ./cmd/$(APP)
 
 # View the desktop app. (Off-screen captures aren't shown to the user; run this
 # on a machine with a display.)
@@ -65,7 +70,7 @@ winres:
 	./scripts/gen-winres.sh $(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_PATCH)
 
 install:
-	go install -trimpath -ldflags "$(LDFLAGS)" ./cmd/$(APP)
+	go install -trimpath -tags $(TAGS) -ldflags "$(LDFLAGS)" ./cmd/$(APP)
 
 version:
 	@echo "v$(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_PATCH) ($(GIT_COMMIT))"
