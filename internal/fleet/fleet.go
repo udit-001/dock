@@ -17,11 +17,12 @@ const (
 	NotInstalled Status = iota
 	UpToDate
 	UpgradeAvailable
+	Unknown
 )
 
 // VersionUnknown is the sentinel store.InstalledVersion returns when a binary
 // is present but its version string can't be parsed — we know it's installed,
-// just not which version. Decide maps it to UpToDate (never "Install").
+// just not which version. Decide maps it to Unknown (never "Install").
 const VersionUnknown = "installed"
 
 func (s Status) String() string {
@@ -30,6 +31,8 @@ func (s Status) String() string {
 		return "Up to date"
 	case UpgradeAvailable:
 		return "Update available"
+	case Unknown:
+		return "Version unknown"
 	default:
 		return "Not installed"
 	}
@@ -53,7 +56,7 @@ func Decide(installed, latest string) Status {
 		return NotInstalled
 	}
 	if installed == VersionUnknown {
-		return UpToDate // present but version unknown → never show "Install"
+		return Unknown // present but version unknown → never show "Install"
 	}
 	lv, err := semver.Parse(latest)
 	if err != nil {

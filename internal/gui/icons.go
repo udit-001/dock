@@ -37,6 +37,8 @@ func luPrimaryIcon(s fleet.Status) string {
 		return "download"
 	case fleet.UpgradeAvailable:
 		return "refresh-cw"
+	case fleet.Unknown:
+		return "refresh-cw"
 	}
 	return "check"
 }

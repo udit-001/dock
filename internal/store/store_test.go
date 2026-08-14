@@ -70,8 +70,8 @@ func TestInstalledVersionUnparseableIsInstalled(t *testing.T) {
 	if got != fleet.VersionUnknown {
 		t.Fatalf("InstalledVersion=%q want VersionUnknown(%q)", got, fleet.VersionUnknown)
 	}
-	if fleet.Decide(got, "v0.9.3") != fleet.UpToDate {
-		t.Fatal("present-but-unparseable must be Up to date, not Not installed")
+	if fleet.Decide(got, "v0.9.3") != fleet.Unknown {
+		t.Fatal("present-but-unparseable must be Unknown version, not Not installed")
 	}
 }
 
