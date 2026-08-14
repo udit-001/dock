@@ -71,6 +71,7 @@ func newEngine(t *testing.T, re *recExec, src HTTPSrc, stopper exec.Stopper) (*E
 	if err != nil {
 		t.Fatal(err)
 	}
+	m.ScanSystem = false // don't touch the real ~/go/bin during tests
 	return &Engine{Store: m, Exec: re, HTTP: src, Stopper: stopper}, m
 }
 

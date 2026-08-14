@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	osexec "os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -15,10 +16,17 @@ import (
 	"github.com/udit-001/app-store/internal/registry"
 )
 
-// Manager locates and mutates the per-app install layout under a managed root.
+// Manager locates and mutates the per-app install layout under a managed root,
+// and can also detect apps installed in the Go toolchain bin dir (~/go/bin).
 type Manager struct {
 	Root string
 	Exec exec.Executor
+	// SearchDirs are extra directories to probe for installed binaries (tests
+	// inject these; GOBIN and GOPATH/bin are always searched).
+	SearchDirs []string
+	// ScanSystem enables probing GOBIN/GOPATH-bin and the PATH for installed
+	// apps. Keep true at runtime; tests set false for hermetic installs.
+	ScanSystem bool
 }
 
 // New returns a Manager rooted at root (created if missing).
@@ -26,7 +34,7 @@ func New(root string, ex exec.Executor) (*Manager, error) {
 	if ex == nil {
 		ex = exec.OSExecutor{}
 	}
-	m := &Manager{Root: root, Exec: ex}
+	m := &Manager{Root: root, Exec: ex, ScanSystem: true}
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		return nil, err
 	}
@@ -38,23 +46,84 @@ func (m *Manager) Dir(id string) string {
 	return filepath.Join(m.Root, id)
 }
 
-// BinaryPath returns the managed binary path for an app. On Windows a ".exe"
-// suffix is appended to the bare binary name.
-func (m *Manager) BinaryPath(ma registry.ManifestApp) string {
+// binaryName returns the platform-correct executable filename for a manifest app.
+func binaryName(ma registry.ManifestApp) string {
 	name := ma.Binary
 	if runtime.GOOS == "windows" && !strings.HasSuffix(strings.ToLower(name), ".exe") {
 		name += ".exe"
 	}
-	return filepath.Join(m.Dir(ma.ID), name)
+	return name
+}
+
+// BinaryPath returns the managed binary path (the fresh-install destination).
+func (m *Manager) BinaryPath(ma registry.ManifestApp) string {
+	return filepath.Join(m.Dir(ma.ID), binaryName(ma))
+}
+
+// Search locates an installed binary for the app, probing the managed root,
+// then the Go toolchain bin directories (GOBIN, GOPATH/bin), then the PATH.
+func (m *Manager) Search(ma registry.ManifestApp) (string, bool) {
+	name := binaryName(ma)
+	dirs := []string{m.Dir(ma.ID)}
+	if m.ScanSystem {
+		dirs = append(dirs, binDirs()...)
+	}
+	dirs = append(dirs, m.SearchDirs...)
+	for _, dir := range dirs {
+		p := filepath.Join(dir, name)
+		if isFile(p) {
+			return p, true
+		}
+	}
+	if m.ScanSystem {
+		if p, err := osexec.LookPath(name); err == nil {
+			return p, true
+		}
+	}
+	return "", false
+}
+
+// Destination returns where an upgraded binary should be written: the existing
+// install location if the app is already installed (deep-located or Go bin), or
+// the managed fresh-install path otherwise.
+func (m *Manager) Destination(ma registry.ManifestApp) string {
+	if p, ok := m.Search(ma); ok {
+		return p
+	}
+	return m.BinaryPath(ma)
+}
+
+// binDirs returns the Go toolchain binary directories to search: GOBIN, then
+// GOPATH/bin (falling back to ~/go/bin).
+func binDirs() []string {
+	var dirs []string
+	if g := os.Getenv("GOBIN"); g != "" {
+		dirs = append(dirs, g)
+	}
+	if gp := os.Getenv("GOPATH"); gp != "" {
+		dirs = append(dirs, filepath.Join(filepath.SplitList(gp)[0], "bin"))
+	}
+	if len(dirs) == 0 {
+		if home, err := os.UserHomeDir(); err == nil {
+			dirs = append(dirs, filepath.Join(home, "go", "bin"))
+		}
+	}
+	return dirs
+}
+
+func isFile(p string) bool {
+	fi, err := os.Stat(p)
+	return err == nil && !fi.IsDir()
 }
 
 var versionRe = regexp.MustCompile(`v?(\d+)\.(\d+)\.(\d+)`)
 
 // InstalledVersion detects the installed version of a manifest app by running
-// "<binary> version" (or --version). Returns "" if not installed or unreadable.
+// "<binary> version" (or --version) at its installed location (managed root,
+// Go toolchain bin, or PATH). Returns "" if not installed or unreadable.
 func (m *Manager) InstalledVersion(ctx context.Context, ma registry.ManifestApp) string {
-	path := m.BinaryPath(ma)
-	if _, err := os.Stat(path); err != nil {
+	path, ok := m.Search(ma)
+	if !ok {
 		return ""
 	}
 	out, _ := m.Exec.Run(ctx, path, "version")

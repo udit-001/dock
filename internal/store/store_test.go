@@ -31,6 +31,7 @@ func TestInstalledVersion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	m.ScanSystem = false
 	ma := registry.ManifestApp{ID: "waypoint", Binary: "waypoint"}
 	// not installed yet
 	if got := m.InstalledVersion(context.Background(), ma); got != "" {
@@ -46,6 +47,29 @@ func TestInstalledVersion(t *testing.T) {
 	}
 	if got := m.InstalledVersion(context.Background(), ma); got != "v0.12.0" {
 		t.Fatalf("InstalledVersion=%q want v0.12.0", got)
+	}
+}
+
+func TestInstalledVersionInGoBin(t *testing.T) {
+	// Detect an app installed in the Go toolchain bin dir (e.g. ~/go/bin).
+	alt := t.TempDir()
+	m, err := New(t.TempDir(), exec.StaticExecutor{Out: "harbor version v0.2.0"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.ScanSystem = false
+	m.SearchDirs = []string{alt}
+	ma := registry.ManifestApp{ID: "harbor", Binary: "harbor"}
+	if err := os.WriteFile(filepath.Join(alt, "harbor"), []byte("x"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if got := m.InstalledVersion(context.Background(), ma); got != "v0.2.0" {
+		t.Fatalf("InstalledVersion(in go bin)=%q want v0.2.0", got)
+	}
+	// Destination should point at the detected Go-bin location, not the managed root.
+	dst := m.Destination(ma)
+	if filepath.Dir(dst) != alt {
+		t.Fatalf("Destination should be in detected Go bin dir %q, got %q", alt, dst)
 	}
 }
 

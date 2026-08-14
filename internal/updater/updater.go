@@ -151,7 +151,7 @@ func (e *Engine) Install(ctx context.Context, ma registry.ManifestApp, app *regi
 	}
 	defer cleanup()
 
-	dst := e.Store.BinaryPath(ma)
+	dst := e.Store.Destination(ma)
 	if err := store.AtomicSwap(staged, dst); err != nil {
 		return fmt.Errorf("install binary: %w", err)
 	}
@@ -166,7 +166,7 @@ func (e *Engine) controlDaemon(ctx context.Context, ma registry.ManifestApp, app
 	if app.Daemon == nil || !app.Daemon.HasDaemon {
 		return nil
 	}
-	bin := e.Store.BinaryPath(ma)
+	bin := e.Store.Destination(ma)
 	switch verb {
 	case "stop":
 		if len(app.Daemon.Stop) > 0 {
