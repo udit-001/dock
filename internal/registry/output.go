@@ -34,8 +34,8 @@ type App struct {
 // DaemonOut tells the desktop app whether an app has a controllable daemon.
 type DaemonOut struct {
 	HasDaemon bool     `json:"has_daemon"`
+	StartArgs []string `json:"start_args"`
 	Stop      []string `json:"stop"`
-	Start     []string `json:"start"`
 	Status    []string `json:"status"`
 }
 

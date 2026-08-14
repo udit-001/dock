@@ -10,6 +10,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/udit-001/app-store/internal/exec"
 	"github.com/udit-001/app-store/internal/registry"
 	"github.com/udit-001/app-store/internal/store"
 )
@@ -17,7 +18,6 @@ import (
 // fakeSrc writes static content to dest and reports progress.
 type fakeSrc struct {
 	content string
-	progress []int64
 }
 
 func (f *fakeSrc) Download(_ context.Context, _, dest string, prog Progress) error {
@@ -33,7 +33,7 @@ func (f *fakeSrc) Download(_ context.Context, _, dest string, prog Progress) err
 	return nil
 }
 
-// recExec records commands; returns fixed version for detection queries.
+// recExec records commands.
 type recExec struct {
 	mu   sync.Mutex
 	args [][]string
@@ -51,11 +51,12 @@ func hash(s string) string {
 	return hex.EncodeToString(h[:])
 }
 
+func noopStop() func(string) error { return func(string) error { return nil } }
+
 func daemonApp(binary, content, wantHash string) (registry.ManifestApp, *registry.App) {
 	ma := registry.ManifestApp{ID: "pharos", Binary: binary}
 	app := &registry.App{
-		Daemon: &registry.DaemonOut{HasDaemon: true,
-			Stop: []string{binary, "daemon", "stop"}, Start: []string{binary, "daemon", "start"}},
+		Daemon: &registry.DaemonOut{HasDaemon: true, StartArgs: []string{"start"}},
 		Assets: map[string]registry.Asset{
 			"linux/amd64": {URL: "http://x/download", FileName: binary, SHA256: wantHash},
 		},
@@ -63,41 +64,37 @@ func daemonApp(binary, content, wantHash string) (registry.ManifestApp, *registr
 	return ma, app
 }
 
-func newEngine(t *testing.T, re *recExec, src HTTPSrc) (*Engine, *store.Manager) {
+func newEngine(t *testing.T, re *recExec, src HTTPSrc, stopper exec.Stopper) (*Engine, *store.Manager) {
 	t.Helper()
 	root := t.TempDir()
 	m, err := store.New(root, re)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &Engine{Store: m, Exec: re, HTTP: src}, m
+	return &Engine{Store: m, Exec: re, HTTP: src, Stopper: stopper}, m
 }
 
 func TestInstallStopsAndStartsDaemonAroundSwap(t *testing.T) {
 	re := &recExec{}
+	var stopped []string
+	stopper := func(name string) error { stopped = append(stopped, name); return nil }
 	content := "BINARY"
 	ma, app := daemonApp("pharos", content, hash(content))
-	eng, m := newEngine(t, re, &fakeSrc{content: content})
+	eng, m := newEngine(t, re, &fakeSrc{content: content}, stopper)
 
 	if err := eng.Install(context.Background(), ma, app, nil); err != nil {
 		t.Fatalf("Install: %v", err)
 	}
 
-	// daemon stop and start must both be called, stop before swap.
-	var commandStrings []string
+	// stop via process-stopper (by binary name), then start via `binary start`.
+	if len(stopped) != 1 || stopped[0] != "pharos" {
+		t.Fatalf("daemon stop should kill by binary name, got %v", stopped)
+	}
 	re.mu.Lock()
-	for _, a := range re.args {
-		commandStrings = append(commandStrings, strings.Join(a, " "))
-	}
+	cmd := strings.Join(re.args[0], " ")
 	re.mu.Unlock()
-	if len(commandStrings) != 2 {
-		t.Fatalf("expected 2 daemon calls (stop,start), got %v", commandStrings)
-	}
-	if !strings.HasSuffix(commandStrings[0], "daemon stop") {
-		t.Errorf("first call should be stop, got %q", commandStrings[0])
-	}
-	if !strings.HasSuffix(commandStrings[1], "daemon start") {
-		t.Errorf("second call should be start, got %q", commandStrings[1])
+	if !strings.HasSuffix(cmd, "start") {
+		t.Errorf("start call should run `binary start`, got %q", cmd)
 	}
 
 	data, err := os.ReadFile(m.BinaryPath(ma))
@@ -113,7 +110,7 @@ func TestInstallAbortsOnChecksumMismatch(t *testing.T) {
 	re := &recExec{}
 	content := "GOOD"
 	ma, app := daemonApp("pharos", content, hash("TAMPERED")) // wrong sha
-	eng, m := newEngine(t, re, &fakeSrc{content: content})
+	eng, m := newEngine(t, re, &fakeSrc{content: content}, noopStop())
 
 	err := eng.Install(context.Background(), ma, app, nil)
 	if err == nil {
@@ -131,7 +128,7 @@ func TestNoDaemonAppSkipsControl(t *testing.T) {
 	app := &registry.App{Assets: map[string]registry.Asset{
 		"linux/amd64": {FileName: "sea", URL: "http://x", SHA256: hash(content)},
 	}}
-	eng, _ := newEngine(t, re, &fakeSrc{content: content})
+	eng, _ := newEngine(t, re, &fakeSrc{content: content}, noopStop())
 	if err := eng.Install(context.Background(), ma, app, nil); err != nil {
 		t.Fatal(err)
 	}
@@ -139,6 +136,33 @@ func TestNoDaemonAppSkipsControl(t *testing.T) {
 	defer re.mu.Unlock()
 	if len(re.args) != 0 {
 		t.Fatalf("no daemon should mean no exec calls, got %v", re.args)
+	}
+}
+
+func TestExplicitStopCommandUsed(t *testing.T) {
+	re := &recExec{}
+	content := "B"
+	ma := registry.ManifestApp{ID: "svc", Binary: "svc"}
+	app := &registry.App{
+		Daemon: &registry.DaemonOut{HasDaemon: true, Stop: []string{"svc", "stop"}, StartArgs: []string{"start"}},
+		Assets: map[string]registry.Asset{
+			"linux/amd64": {FileName: "svc", URL: "http://x", SHA256: hash(content)},
+		},
+	}
+	called := false
+	stopper := func(name string) error { called = true; return nil } // should NOT be called
+	eng, _ := newEngine(t, re, &fakeSrc{content: content}, stopper)
+	if err := eng.Install(context.Background(), ma, app, nil); err != nil {
+		t.Fatal(err)
+	}
+	if called {
+		t.Error("explicit stop command should supersede process-stopper")
+	}
+	re.mu.Lock()
+	defer re.mu.Unlock()
+	// stop + start => two exec calls
+	if len(re.args) != 2 {
+		t.Fatalf("expected stop + start exec calls, got %v", re.args)
 	}
 }
 

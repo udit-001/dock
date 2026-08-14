@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-13T22:06:55.847191234Z",
+  "generated_at": "2026-08-14T04:47:24.650050269Z",
   "apps": [
     {
       "id": "pharos",
@@ -10,21 +10,11 @@
       "icon": "https://cdn.jsdelivr.net/gh/udit-001/app-store@main/assets/icons/pharos.png",
       "daemon": {
         "has_daemon": true,
-        "stop": [
-          "pharos",
-          "daemon",
-          "stop"
-        ],
-        "start": [
-          "pharos",
-          "daemon",
+        "start_args": [
           "start"
         ],
-        "status": [
-          "pharos",
-          "daemon",
-          "status"
-        ]
+        "stop": null,
+        "status": null
       },
       "binary": "pharos",
       "latest_version": "v0.9.3",
@@ -60,21 +50,11 @@
       "icon": "https://cdn.jsdelivr.net/gh/udit-001/app-store@main/assets/icons/harbor.png",
       "daemon": {
         "has_daemon": true,
-        "stop": [
-          "harbor",
-          "daemon",
-          "stop"
-        ],
-        "start": [
-          "harbor",
-          "daemon",
+        "start_args": [
           "start"
         ],
-        "status": [
-          "harbor",
-          "daemon",
-          "status"
-        ]
+        "stop": null,
+        "status": null
       },
       "binary": "harbor",
       "latest_version": "v0.2.0",
@@ -110,21 +90,11 @@
       "icon": "https://cdn.jsdelivr.net/gh/udit-001/app-store@main/assets/icons/waypoint.png",
       "daemon": {
         "has_daemon": true,
-        "stop": [
-          "waypoint",
-          "daemon",
-          "stop"
-        ],
-        "start": [
-          "waypoint",
-          "daemon",
+        "start_args": [
           "start"
         ],
-        "status": [
-          "waypoint",
-          "daemon",
-          "status"
-        ]
+        "stop": null,
+        "status": null
       },
       "binary": "waypoint",
       "latest_version": "v0.12.0",

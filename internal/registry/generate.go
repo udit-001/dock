@@ -65,8 +65,8 @@ func (c *GHClient) ResolveApp(ma ManifestApp) (*App, error) {
 	if ma.Daemon != nil {
 		app.Daemon = &DaemonOut{
 			HasDaemon: true,
+			StartArgs: ma.Daemon.StartArgs,
 			Stop:      ma.Daemon.Stop,
-			Start:     ma.Daemon.Start,
 			Status:    ma.Daemon.Status,
 		}
 	}

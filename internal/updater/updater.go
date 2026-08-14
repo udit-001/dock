@@ -121,8 +121,18 @@ type Engine struct {
 	Store *store.Manager
 	Exec  exec.Executor
 	HTTP  HTTPSrc
+	// Stopper terminates a daemon by binary name when the app has no explicit
+	// stop command. Defaults to exec.ProcessStop. Tests inject a fake.
+	Stopper exec.Stopper
 	// WorkDir is a temp staging dir (defaults to os.TempDir()).
 	WorkDir string
+}
+
+func (e *Engine) stopper() exec.Stopper {
+	if e.Stopper != nil {
+		return e.Stopper
+	}
+	return exec.ProcessStop
 }
 
 // Install ensures the latest release of app is installed, stopping/restarting a
@@ -148,24 +158,27 @@ func (e *Engine) Install(ctx context.Context, ma registry.ManifestApp, app *regi
 	return e.controlDaemon(ctx, ma, app, "start")
 }
 
-// controlDaemon runs the app's declared daemon command (if any) for verb.
+// controlDaemon starts/stops the app's daemon around a swap. Start runs the
+// managed binary with the manifest start_args (the fleet apps self-daemonize
+// and return). Stop runs an explicit command if declared, else kills the
+// daemon by binary name.
 func (e *Engine) controlDaemon(ctx context.Context, ma registry.ManifestApp, app *registry.App, verb string) error {
 	if app.Daemon == nil || !app.Daemon.HasDaemon {
 		return nil
 	}
-	var args []string
+	bin := e.Store.BinaryPath(ma)
 	switch verb {
 	case "stop":
-		args = app.Daemon.Stop
+		if len(app.Daemon.Stop) > 0 {
+			_, err := e.Exec.Run(ctx, bin, app.Daemon.Stop[1:]...)
+			return err
+		}
+		return e.stopper()(ma.Binary)
 	case "start":
-		args = app.Daemon.Start
+		_, err := e.Exec.Run(ctx, bin, app.Daemon.StartArgs...)
+		return err
 	}
-	if len(args) == 0 {
-		return nil
-	}
-	bin := e.Store.BinaryPath(ma)
-	_, err := e.Exec.Run(ctx, bin, args[1:]...)
-	return err
+	return nil
 }
 
 // downloadAndStage fetches the asset (converting archives to a single binary),

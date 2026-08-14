@@ -27,9 +27,7 @@ apps:
     # project_name in the repo's .goreleaser.yaml (for asset-name resolution).
     release_name: pharos
     daemon:
-      stop: [pharos, daemon, stop]
-      start: [pharos, daemon, start]
-      status: [pharos, daemon, status]
+      start_args: [start]
     platforms:
       - windows/amd64
       - linux/amd64
@@ -42,9 +40,7 @@ apps:
     binary: harbor
     release_name: harbor
     daemon:
-      stop: [harbor, daemon, stop]
-      start: [harbor, daemon, start]
-      status: [harbor, daemon, status]
+      start_args: [start]
     platforms:
       - windows/amd64
       - linux/amd64
@@ -57,9 +53,7 @@ apps:
     binary: waypoint
     release_name: waypoint
     daemon:
-      stop: [waypoint, daemon, stop]
-      start: [waypoint, daemon, start]
-      status: [waypoint, daemon, status]
+      start_args: [start]
     platforms:
       - windows/amd64
       - linux/amd64

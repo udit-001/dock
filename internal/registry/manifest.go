@@ -30,10 +30,13 @@ type ManifestApp struct {
 }
 
 // Daemon holds the commands the manager uses to control a background service.
+// `start_args` launch the daemon (argv after the binary, e.g. ["start"]). The
+// apps self-daemonize and return. `stop` is an optional explicit stop command;
+// when absent the manager stops the service by terminating its process(es).
 type Daemon struct {
-	Stop   []string `yaml:"stop"`
-	Start  []string `yaml:"start"`
-	Status []string `yaml:"status"`
+	StartArgs []string `yaml:"start_args"`
+	Stop      []string `yaml:"stop"`
+	Status    []string `yaml:"status"`
 }
 
 // LoadManifest reads and parses manifest.yaml from path.
