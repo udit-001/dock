@@ -195,12 +195,18 @@ func (c *Controller) buildCard(r *row) *widget.Card {
 	if r.status == fleet.UpToDate {
 		btn.Disable()
 	}
-	openBtn := widget.NewButton("Open", func() { openURLged(r.app.Homepage) })
 
 	// Row content: icon on the left, title/desc/status filling the middle.
 	info := container.NewVBox(title, desc, meta)
 	// Action buttons on the RIGHT edge so rows read left-to-right: icon, text,
-	// then Install/Open.
+	// then Install/Open. Open is shown only when the app is installed.
+	if r.status == fleet.NotInstalled {
+		actions := container.NewVBox(btn)
+		body := container.NewBorder(nil, nil, nil, actions,
+			container.NewHBox(ic, container.NewPadded(info)))
+		return widget.NewCard("", "", body)
+	}
+	openBtn := widget.NewButton("Open", func() { openURLged(r.app.Homepage) })
 	actions := container.NewVBox(btn, openBtn)
 	body := container.NewBorder(nil, nil, nil, actions,
 		container.NewHBox(ic, container.NewPadded(info)))
