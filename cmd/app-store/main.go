@@ -22,11 +22,19 @@ import (
 
 func main() {
 	inspectPath := flag.String("inspect", "", "dump the widget-tree markup to a file (use - for stdout) and exit")
+	shotPath := flag.String("shot", "", "render the UI off-screen to a PNG at this path and exit")
 	flag.Parse()
 
 	c, err := gui.New()
 	if err != nil {
 		log.Fatalf("app-store: %v", err)
+	}
+	if *shotPath != "" {
+		if err := c.RenderPNG(*shotPath); err != nil {
+			log.Fatalf("shot: %v", err)
+		}
+		log.Printf("wrote %s", *shotPath)
+		return
 	}
 	if *inspectPath != "" {
 		markup := c.Inspect()
