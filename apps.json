@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-16T04:01:11.787391428Z",
+  "generated_at": "2026-08-17T04:04:32.395046644Z",
   "apps": [
     {
       "id": "pharos",
@@ -59,27 +59,27 @@
       },
       "binary": "harbor",
       "open_url": "http://127.0.0.1:9090",
-      "latest_version": "v0.2.3",
-      "published_at": "2026-08-14T05:14:04Z",
+      "latest_version": "v0.2.4",
+      "published_at": "2026-08-16T22:20:22Z",
       "prerelease": false,
       "assets": {
         "darwin/arm64": {
-          "url": "https://github.com/udit-001/harbor/releases/download/v0.2.3/harbor_0.2.3_darwin_arm64.tar.gz",
-          "sha256": "85fb34877ce64b311cb444d1c3fe1b0f505c1b3ab7188e6e752fd3f625a3cca4",
-          "size": 5535335,
-          "filename": "harbor_0.2.3_darwin_arm64.tar.gz"
+          "url": "https://github.com/udit-001/harbor/releases/download/v0.2.4/harbor_0.2.4_darwin_arm64.tar.gz",
+          "sha256": "53635b2e561dc2b694dd6ce11a922c967d04628c018c003f56b8b75c934d0ea7",
+          "size": 5535133,
+          "filename": "harbor_0.2.4_darwin_arm64.tar.gz"
         },
         "linux/amd64": {
-          "url": "https://github.com/udit-001/harbor/releases/download/v0.2.3/harbor_0.2.3_linux_amd64.tar.gz",
-          "sha256": "0658dfe449d189d5b5c75bae6217441d45d8dd911e2486a7e080c154488b56cb",
-          "size": 5711153,
-          "filename": "harbor_0.2.3_linux_amd64.tar.gz"
+          "url": "https://github.com/udit-001/harbor/releases/download/v0.2.4/harbor_0.2.4_linux_amd64.tar.gz",
+          "sha256": "5b041134e875dddcd5b366402ceeac9e3d9ca89ff988460e351a161e307addc2",
+          "size": 5711205,
+          "filename": "harbor_0.2.4_linux_amd64.tar.gz"
         },
         "windows/amd64": {
-          "url": "https://github.com/udit-001/harbor/releases/download/v0.2.3/harbor_0.2.3_windows_amd64.exe",
-          "sha256": "1ac108bf0850cbf3a0d2c0d22df07bcd41e11756f12b06425403262dbb6e2a23",
-          "size": 14359552,
-          "filename": "harbor_0.2.3_windows_amd64.exe"
+          "url": "https://github.com/udit-001/harbor/releases/download/v0.2.4/harbor_0.2.4_windows_amd64.exe",
+          "sha256": "533b7b2d9b0cc41026f62259969727c1ec056db0b7f78ebe7a6bca892fc93824",
+          "size": 14361088,
+          "filename": "harbor_0.2.4_windows_amd64.exe"
         }
       }
     },
