@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-16T08:38:17.381529614Z",
+  "generated_at": "2026-09-17T08:41:43.688863198Z",
   "apps": [
     {
       "id": "pharos",
@@ -18,27 +18,27 @@
       },
       "binary": "pharos",
       "open_url": "http://127.0.0.1:9090",
-      "latest_version": "v0.11.0",
-      "published_at": "2026-09-07T18:00:34Z",
+      "latest_version": "v0.12.0",
+      "published_at": "2026-09-16T17:22:40Z",
       "prerelease": false,
       "assets": {
         "darwin/arm64": {
-          "url": "https://github.com/udit-001/pharos/releases/download/v0.11.0/pharos_0.11.0_darwin_arm64.tar.gz",
-          "sha256": "8f62ad97bb2d1571cc77a4ac5eaad24f142cd955b342b351ef33e6b182dedf9b",
-          "size": 6138562,
-          "filename": "pharos_0.11.0_darwin_arm64.tar.gz"
+          "url": "https://github.com/udit-001/pharos/releases/download/v0.12.0/pharos_0.12.0_darwin_arm64.tar.gz",
+          "sha256": "b6a4b4060409a04772f46dd0dbb7b1434c8360c997fdc6e1807f5e35be7cccae",
+          "size": 6224368,
+          "filename": "pharos_0.12.0_darwin_arm64.tar.gz"
         },
         "linux/amd64": {
-          "url": "https://github.com/udit-001/pharos/releases/download/v0.11.0/pharos_0.11.0_linux_amd64.tar.gz",
-          "sha256": "53b5a69800eaa02bd3ed2a7dee5d42d7db92f75029cac077e6028b0c6a714060",
-          "size": 6361185,
-          "filename": "pharos_0.11.0_linux_amd64.tar.gz"
+          "url": "https://github.com/udit-001/pharos/releases/download/v0.12.0/pharos_0.12.0_linux_amd64.tar.gz",
+          "sha256": "7fbd69058aa12b7a41a6c8c7b63a19f4412fc198a91bf7cc44d88b9d5e1aad2d",
+          "size": 6442183,
+          "filename": "pharos_0.12.0_linux_amd64.tar.gz"
         },
         "windows/amd64": {
-          "url": "https://github.com/udit-001/pharos/releases/download/v0.11.0/pharos_0.11.0_windows_amd64.exe",
-          "sha256": "77d456534a4408b1d8015f0fdc09d08dad35955240f8827f6a1c1748a3e58beb",
-          "size": 15673856,
-          "filename": "pharos_0.11.0_windows_amd64.exe"
+          "url": "https://github.com/udit-001/pharos/releases/download/v0.12.0/pharos_0.12.0_windows_amd64.exe",
+          "sha256": "1ff206a47d267408d5c67251b2ea224494f3fa603f022b18f07e2c9989c56b20",
+          "size": 15909376,
+          "filename": "pharos_0.12.0_windows_amd64.exe"
         }
       }
     },
