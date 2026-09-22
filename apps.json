@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-21T09:00:02.197649567Z",
+  "generated_at": "2026-09-22T08:35:09.398216536Z",
   "apps": [
     {
       "id": "pharos",
@@ -100,27 +100,27 @@
       },
       "binary": "waypoint",
       "open_url": "http://127.0.0.1:8080",
-      "latest_version": "v0.14.0",
-      "published_at": "2026-08-24T20:33:05Z",
+      "latest_version": "v0.15.0",
+      "published_at": "2026-09-21T15:59:16Z",
       "prerelease": false,
       "assets": {
         "darwin/arm64": {
-          "url": "https://github.com/udit-001/waypoint/releases/download/v0.14.0/waypoint_0.14.0_darwin_arm64.tar.gz",
-          "sha256": "e935381e6c879d25a6fadbafd466fcd2f994a0eceaf8f84bddd11e76659576c7",
-          "size": 7419662,
-          "filename": "waypoint_0.14.0_darwin_arm64.tar.gz"
+          "url": "https://github.com/udit-001/waypoint/releases/download/v0.15.0/waypoint_0.15.0_darwin_arm64.tar.gz",
+          "sha256": "670fb692bdb25f9afc6d8b734a17ee2825536e17043851b307fd94f83ddb8e9a",
+          "size": 7455848,
+          "filename": "waypoint_0.15.0_darwin_arm64.tar.gz"
         },
         "linux/amd64": {
-          "url": "https://github.com/udit-001/waypoint/releases/download/v0.14.0/waypoint_0.14.0_linux_amd64.tar.gz",
-          "sha256": "1e2528751ecd3dbd00236bbf232cefcd8aee8f6391ccfd1d2be2ddbff637fe85",
-          "size": 7781932,
-          "filename": "waypoint_0.14.0_linux_amd64.tar.gz"
+          "url": "https://github.com/udit-001/waypoint/releases/download/v0.15.0/waypoint_0.15.0_linux_amd64.tar.gz",
+          "sha256": "53fbb3d52e82ea4c4d4fae9d1a203f0c6e3c588ad9e2641e25b9f0000589398a",
+          "size": 7819367,
+          "filename": "waypoint_0.15.0_linux_amd64.tar.gz"
         },
         "windows/amd64": {
-          "url": "https://github.com/udit-001/waypoint/releases/download/v0.14.0/waypoint_0.14.0_windows_amd64.zip",
-          "sha256": "4ca4f651c64b892768a840080fe2a3e819ea34a75723eb6a65436c1a5d8be359",
-          "size": 7751135,
-          "filename": "waypoint_0.14.0_windows_amd64.zip"
+          "url": "https://github.com/udit-001/waypoint/releases/download/v0.15.0/waypoint_0.15.0_windows_amd64.zip",
+          "sha256": "886abdb5de42bd210ea9a14acbc52978319d3165df9f2089787775ac802a00ad",
+          "size": 7783038,
+          "filename": "waypoint_0.15.0_windows_amd64.zip"
         }
       }
     }
