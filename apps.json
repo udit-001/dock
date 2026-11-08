@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-07T10:15:44.658348597Z",
+  "generated_at": "2026-11-08T10:27:04.079362957Z",
   "apps": [
     {
       "id": "pharos",
@@ -106,19 +106,16 @@
       "assets": {
         "darwin/arm64": {
           "url": "https://github.com/udit-001/waypoint/releases/download/v0.15.0/waypoint_0.15.0_darwin_arm64.tar.gz",
-          "sha256": "670fb692bdb25f9afc6d8b734a17ee2825536e17043851b307fd94f83ddb8e9a",
           "size": 7455848,
           "filename": "waypoint_0.15.0_darwin_arm64.tar.gz"
         },
         "linux/amd64": {
           "url": "https://github.com/udit-001/waypoint/releases/download/v0.15.0/waypoint_0.15.0_linux_amd64.tar.gz",
-          "sha256": "53fbb3d52e82ea4c4d4fae9d1a203f0c6e3c588ad9e2641e25b9f0000589398a",
           "size": 7819367,
           "filename": "waypoint_0.15.0_linux_amd64.tar.gz"
         },
         "windows/amd64": {
           "url": "https://github.com/udit-001/waypoint/releases/download/v0.15.0/waypoint_0.15.0_windows_amd64.zip",
-          "sha256": "886abdb5de42bd210ea9a14acbc52978319d3165df9f2089787775ac802a00ad",
           "size": 7783038,
           "filename": "waypoint_0.15.0_windows_amd64.zip"
         }
